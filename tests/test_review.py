@@ -42,6 +42,7 @@ def test_override_split_flows_into_ledger_with_log(seeded):
                                                           AllocationRecord.superseded_by_decision_id.is_(None))).all()
     assert len(live) == 1 and live[0].review_status == "human_overridden"
     assert live[0].po_number == a and live[0].customer_id and live[0].created_by_decision_id == d.id
+    assert live[0].invoice_number == f"INV-{a[3:]}"  # single invoice on the PO is implied
     assert queued.superseded_by_decision_id == d.id
 
     after = ledger.summarize(session)

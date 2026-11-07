@@ -161,6 +161,10 @@ def _validate_lines(session: Session, lines: list[dict], max_cents: int) -> list
         inv = session.get(Invoice, raw["invoice_number"]) if raw.get("invoice_number") else None
         if raw.get("invoice_number") and inv is None:
             raise ReviewError(f"unknown invoice_number {raw['invoice_number']}")
+        if inv is None and po is not None:
+            # Convenience: a PO with exactly one invoice implies it.
+            invs = session.scalars(select(Invoice).where(Invoice.po_number == po.po_number)).all()
+            inv = invs[0] if len(invs) == 1 else None
         total += amount
         out.append({"po_number": po.po_number if po else None, "customer_id": customer_id,
                     "invoice_number": inv.invoice_number if inv else None, "amount_cents": amount})
