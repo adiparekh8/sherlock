@@ -52,11 +52,12 @@ def test_every_page_renders_without_exception(api_url):
     at = AppTest.from_file(str(REPO / "ui" / "app.py"), default_timeout=60).run()
     assert not at.exception, at.exception
     for page in PAGES:
-        at.sidebar.radio[0].set_value(page).run()
+        at.radio[0].set_value(page).run()
         assert not at.exception, f"{page}: {at.exception}"
     # Ledger page shows conservation and the queue page lists the planted cases.
-    at.sidebar.radio[0].set_value("Ledger").run()
-    assert any("holds" in m.value for m in at.metric)
-    at.sidebar.radio[0].set_value("Review queue").run()
+    at.radio[0].set_value("Ledger").run()
+    body = " ".join(m.value for m in at.markdown)
+    assert "Conservation: refund = allocated + unallocated" in body and ">Holds<" in body
+    at.radio[0].set_value("Review queue").run()
     labels = " ".join(e.label for e in at.expander)
     assert "ambiguous_po_split" in labels and "missing_invoice" in labels and "CUST-003" in labels

@@ -5,7 +5,8 @@ __pycache__/
 .env
 *.db
 *.db-journal
-.streamlit/
+.streamlit/secrets.toml
 dist/
 build/
 *.egg-info/
+.gstack/

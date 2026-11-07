@@ -1,0 +1,22 @@
+# Sherlock UI theme. Fonts are loaded by the @import in ui/app.py; these names must match.
+[theme]
+base = "light"
+primaryColor = "#2F5F5A"
+backgroundColor = "#F4F3EF"
+secondaryBackgroundColor = "#ECEAE3"
+textColor = "#1C1B19"
+linkColor = "#2F5F5A"
+borderColor = "#D8D5CE"
+dataframeBorderColor = "#D8D5CE"
+font = "IBM Plex Sans, sans-serif"
+headingFont = "Newsreader, Georgia, serif"
+codeFont = "IBM Plex Mono, monospace"
+baseRadius = "0px"
+buttonRadius = "0px"
+showSidebarBorder = false
+
+[server]
+headless = true
+
+[browser]
+gatherUsageStats = false
