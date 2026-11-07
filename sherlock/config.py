@@ -15,7 +15,7 @@ class Settings(BaseSettings):
     data_dir: Path = Path("data")
 
     anthropic_api_key: str | None = None
-    anthropic_model: str = "claude-sonnet-5-5"
+    anthropic_model: str = "claude-opus-5-5"
     llm_cache_dir: Path = Path("llm_cache")
 
     google_application_credentials: str | None = None

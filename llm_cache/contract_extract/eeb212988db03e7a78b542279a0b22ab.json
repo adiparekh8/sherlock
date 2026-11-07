@@ -1,0 +1,73 @@
+{
+  "created_at": "2026-11-07T06:39:21.402070+00:00",
+  "model": "stub",
+  "output": {
+    "clauses": [
+      {
+        "clause_type": "surcharge_passthrough",
+        "confidence": 0.5,
+        "obligation_strength": "ambiguous",
+        "page": 2,
+        "quoted_text": "4. Tariff Surcharge\nBuyer acknowledges that the products are subject to additional duties under Section 301 of the Trade Act of",
+        "reasoning": "Tariffs were passed through as a surcharge but the clause is silent on refunds.",
+        "refund_owed_to_customer": "unclear"
+      },
+      {
+        "clause_type": "no_refund_obligation",
+        "confidence": 0.88,
+        "obligation_strength": "clear",
+        "page": 2,
+        "quoted_text": "1974. Seller may add a tariff surcharge to each invoice equal to the duties actually paid on the products\nshipped. Buyer agrees that the surcharge is a pricing term and not a pass-through of a specific cost. Any\nsubsequent reduction, exclusion, drawback, or refund of such duties shall be for Seller's account and retained\nby Seller, and Buyer waives any claim to such amounts.",
+        "reasoning": "The clause states that any refund is retained by Seller and the Buyer waives claims to it.",
+        "refund_owed_to_customer": "no"
+      }
+    ],
+    "fields": [
+      {
+        "confidence": 0.9,
+        "name": "seller_name",
+        "page": 1,
+        "quoted_text": "between Pacific Crest Imports LLC, a Washington limited liability company with offices at 4120 Harbor Way, Suite 300, Tacoma, WA 98421 (\"Seller\"), and Ridgeline Outfitters Inc. (\"Buyer\")",
+        "value": "Pacific Crest Imports LLC"
+      },
+      {
+        "confidence": 0.9,
+        "name": "buyer_name",
+        "page": 1,
+        "quoted_text": "between Pacific Crest Imports LLC, a Washington limited liability company with offices at 4120 Harbor Way, Suite 300, Tacoma, WA 98421 (\"Seller\"), and Ridgeline Outfitters Inc. (\"Buyer\")",
+        "value": "Ridgeline Outfitters Inc."
+      },
+      {
+        "confidence": 0.9,
+        "name": "effective_date",
+        "page": 1,
+        "quoted_text": "as of July 15, 2023",
+        "value": "2023-07-15"
+      },
+      {
+        "confidence": 0.9,
+        "name": "governing_law",
+        "page": 2,
+        "quoted_text": "governed by the laws of the State of Washington",
+        "value": "the State of Washington"
+      },
+      {
+        "confidence": 0.85,
+        "name": "payment_terms_days",
+        "page": 2,
+        "quoted_text": "within thirty (30) days of the invoice date",
+        "value": "30"
+      },
+      {
+        "confidence": 0.8,
+        "name": "tariff_clause_heading",
+        "page": 2,
+        "quoted_text": "4. Tariff Surcharge",
+        "value": "4. Tariff Surcharge"
+      }
+    ]
+  },
+  "prompt_version": "v1",
+  "source": "stub",
+  "task": "contract_extract"
+}
