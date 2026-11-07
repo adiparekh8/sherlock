@@ -20,7 +20,7 @@ class MatchConfig:
     amount_tolerance_pct: float = 5.0
     # A PO's order_date must fall within this many days before the shipment's ship_date to be a
     # fuzzy candidate. POs with no order_date are always candidates.
-    po_date_window_days: int = 180
+    po_date_window_days: int = 90
     # Max edit distance for rescuing a mistyped po_number.
     po_typo_max_edits: int = 2
 
