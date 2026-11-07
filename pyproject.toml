@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sherlock"
+version = "0.1.0"
+description = "Tariff refund allocation with evidence-linked ledger, review queue, audit memo, and journal-entry export."
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.110",
+    "uvicorn[standard]>=0.29",
+    "sqlalchemy>=2.0",
+    "psycopg[binary]>=3.1",
+    "pandas>=2.2",
+    "streamlit>=1.35",
+    "pydantic>=2.6",
+    "pydantic-settings>=2.2",
+    "python-dotenv>=1.0",
+    "pypdf>=4.0",
+    "fpdf2>=2.7",
+    "anthropic>=0.40",
+    "requests>=2.31",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0", "httpx>=0.27"]
+docai = ["google-cloud-documentai>=2.20"]
+
+[tool.setuptools.packages.find]
+include = ["sherlock*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
