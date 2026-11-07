@@ -54,7 +54,9 @@ is a function `(session, dataset_dir) -> summary dict` registered in `STAGES`.
   stub cannot be shadowed by stale files.
 - **Outputs.** `memo.py` and `export.py` are pure reads of the ledger and regenerate on every call.
 - **API** (`sherlock/api/app.py`) is unprefixed because one refund is loaded at a time. The Streamlit UI
-  (`ui/app.py`) talks only to the API.
+  (`ui/app.py`) talks only to the API. Its look comes from `.streamlit/config.toml` (theme, fonts, zero radius)
+  plus the CSS block at the top of `ui/app.py`; pages deep-link as `?page=Ledger`. Streamlit's DOM is
+  version-specific, so after a Streamlit upgrade re-check the nav radio and expander selectors there.
 
 ## Conventions
 
