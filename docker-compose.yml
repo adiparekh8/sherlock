@@ -1,0 +1,19 @@
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: sherlock
+      POSTGRES_PASSWORD: sherlock
+      POSTGRES_DB: sherlock
+    ports:
+      - "5432:5432"
+    volumes:
+      - sherlock_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sherlock"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+
+volumes:
+  sherlock_pgdata:
