@@ -43,5 +43,9 @@ def seed(dataset: str, engine: Engine | None = None) -> SeedReport:
     return report
 
 
-# (name, callable(session, dataset_dir) -> summary dict). Extended by later modules.
-STAGES: list[tuple[str, object]] = []
+from sherlock.parsing.stage import parse_documents  # noqa: E402
+
+# (name, callable(session, dataset_dir) -> summary dict), in run order.
+STAGES: list[tuple[str, object]] = [
+    ("parse", parse_documents),
+]
