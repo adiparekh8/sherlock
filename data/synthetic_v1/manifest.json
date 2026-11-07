@@ -254,11 +254,11 @@
   ],
   "counts": {
     "shipments": 200,
-    "purchase_orders": 201,
-    "invoices": 200,
-    "refund_entries": 170,
-    "refund_amount_cents": 206956702,
-    "shipments_not_on_refund": 26,
+    "purchase_orders": 200,
+    "invoices": 199,
+    "refund_entries": 173,
+    "refund_amount_cents": 217633901,
+    "shipments_not_on_refund": 23,
     "contracts": 8
   }
 }

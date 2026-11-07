@@ -43,6 +43,7 @@ def seed(dataset: str, engine: Engine | None = None) -> SeedReport:
     return report
 
 
+from sherlock.matching.engine import run_matching  # noqa: E402
 from sherlock.normalize import normalize_documents  # noqa: E402
 from sherlock.parsing.stage import parse_documents  # noqa: E402
 
@@ -50,4 +51,5 @@ from sherlock.parsing.stage import parse_documents  # noqa: E402
 STAGES: list[tuple[str, object]] = [
     ("parse", parse_documents),
     ("normalize", normalize_documents),
+    ("match", run_matching),
 ]
