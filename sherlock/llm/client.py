@@ -4,8 +4,8 @@ Determinism for the demo:
   * Every call is keyed by sha256(model, task, prompt version, system, user text, schema).
   * Results are written to LLM_CACHE_DIR/<task>/<key>.json and served from there on later runs.
   * With no ANTHROPIC_API_KEY the client serves the cache, and on a miss runs the deterministic stub for
-    that task (sherlock/llm/stub.py). Stub results are cached with source="stub"; when a key is present
-    they are recomputed through the API and overwritten, so a committed stub never shadows a real answer.
+    that task (sherlock/llm/stub.py). Stub output is never written to the cache, so a stub answer can
+    never shadow a real one once a key is available.
 """
 
 from __future__ import annotations
@@ -53,22 +53,19 @@ class LLMClient:
         path = self.cache_dir / task / f"{key}.json"
 
         cached = _read(path)
-        if cached and (cached["source"] == "api" or not self.has_key):
+        if cached:
             return LLMResult(schema_model.model_validate(cached["output"]).model_dump(), "cache", key, cached["model"])
 
         if self.has_key:
-            output = self._call_api(model, system, user, schema)
-            source = "api"
-        elif self.allow_stub:
-            output = STUBS[task](stub_input if stub_input is not None else user)
-            source = "stub"
-        else:
-            raise CacheMiss(f"no ANTHROPIC_API_KEY and no cached result for {task}/{key}")
+            output = schema_model.model_validate(self._call_api(model, system, user, schema)).model_dump()
+            _write(path, {"task": task, "prompt_version": prompt_version, "model": model, "source": "api",
+                          "created_at": datetime.now(timezone.utc).isoformat(), "output": output})
+            return LLMResult(output, "api", key, model)
 
-        output = schema_model.model_validate(output).model_dump()
-        _write(path, {"task": task, "prompt_version": prompt_version, "model": model if source == "api" else "stub",
-                      "source": source, "created_at": datetime.now(timezone.utc).isoformat(), "output": output})
-        return LLMResult(output, source, key, model if source == "api" else "stub")
+        if self.allow_stub:
+            output = schema_model.model_validate(STUBS[task](stub_input if stub_input is not None else user)).model_dump()
+            return LLMResult(output, "stub", key, "stub")
+        raise CacheMiss(f"no ANTHROPIC_API_KEY and no cached result for {task}/{key}")
 
     def _call_api(self, model: str, system: str, user: str, schema: dict) -> dict:
         import anthropic

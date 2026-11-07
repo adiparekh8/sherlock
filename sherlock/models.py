@@ -250,6 +250,10 @@ class CandidateObligation(Base):
     reasoning: Mapped[str] = mapped_column(Text, default="")
     draft_amount_cents: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
     draft_basis: Mapped[str] = mapped_column(Text, default="")
+    obligation_strength: Mapped[str] = mapped_column(String(30), default="")  # clear | conditional | ambiguous | none
+    refund_owed_to_customer: Mapped[str] = mapped_column(String(10), default="unclear")  # yes | no | unclear
+    evidence: Mapped[list] = mapped_column(JSON, default=list)  # the clause citation plus surcharge invoices
+    confirmed_amount_cents: Mapped[int | None] = mapped_column(BigInteger, nullable=True)  # set by a human decision
     status: Mapped[str] = mapped_column(String(30), default=ObligationStatus.PENDING_REVIEW.value, index=True)
     decided_by_decision_id: Mapped[int | None] = mapped_column(ForeignKey("review_decisions.id"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
