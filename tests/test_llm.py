@@ -20,14 +20,28 @@ def _pages(customer_id: str) -> list[dict]:
     return [{"page": p.page, "text": p.text} for p in r.pages]
 
 
-def test_no_key_uses_stub_then_cache(tmp_path):
+def test_no_key_uses_stub_and_never_caches_it(tmp_path):
     client = LLMClient(Settings(anthropic_api_key=None, llm_cache_dir=tmp_path))
     pages = _pages("CUST-001")
     first = client.complete_json("contract_extract", "v1", "sys", "user text", stub_input=pages)
     second = client.complete_json("contract_extract", "v1", "sys", "user text", stub_input=pages)
-    assert first.source == "stub" and second.source == "cache"
+    assert first.source == second.source == "stub"
     assert first.output == second.output
-    assert list((tmp_path / "contract_extract").glob("*.json"))
+    assert not (tmp_path / "contract_extract").exists()
+
+
+def test_cached_api_output_is_served_without_a_key(tmp_path):
+    import json
+    from sherlock.llm.client import _cache_key
+    from sherlock.llm.schemas import ContractExtraction
+
+    settings = Settings(anthropic_api_key=None, llm_cache_dir=tmp_path, anthropic_model="m")
+    key = _cache_key("m", "contract_extract", "v1", "sys", "u", ContractExtraction.model_json_schema())
+    (tmp_path / "contract_extract").mkdir()
+    (tmp_path / "contract_extract" / f"{key}.json").write_text(json.dumps(
+        {"model": "m", "source": "api", "output": {"fields": [], "clauses": []}}))
+    res = LLMClient(settings).complete_json("contract_extract", "v1", "sys", "u", stub_input=[])
+    assert res.source == "cache" and res.output == {"fields": [], "clauses": []}
 
 
 def test_stub_classifies_planted_contracts():
