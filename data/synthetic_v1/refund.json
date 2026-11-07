@@ -2,7 +2,7 @@
   "refund_id": "CBP-REF-2025-0917",
   "importer": "Pacific Crest Imports LLC",
   "importer_of_record_number": "91-4472108",
-  "amount_cents": 206956702,
+  "amount_cents": 217633901,
   "received_date": "2025-09-17",
   "currency": "USD",
   "source": "U.S. Customs and Border Protection",
@@ -294,6 +294,11 @@
       "entry_date": "2024-05-24"
     },
     {
+      "entry_number": "ENT-24-001143",
+      "amount_cents": 2016000,
+      "entry_date": "2024-06-01"
+    },
+    {
       "entry_number": "ENT-24-001145",
       "amount_cents": 123500,
       "entry_date": "2024-05-27"
@@ -455,7 +460,7 @@
     },
     {
       "entry_number": "ENT-24-001212",
-      "amount_cents": 968000,
+      "amount_cents": 1725762,
       "entry_date": "2024-07-22"
     },
     {
@@ -609,6 +614,11 @@
       "entry_date": "2024-09-19"
     },
     {
+      "entry_number": "ENT-24-001282",
+      "amount_cents": 2080400,
+      "entry_date": "2024-10-02"
+    },
+    {
       "entry_number": "ENT-24-001284",
       "amount_cents": 1870812,
       "entry_date": "2024-09-29"
@@ -662,6 +672,11 @@
       "entry_number": "ENT-24-001304",
       "amount_cents": 1057812,
       "entry_date": "2024-10-16"
+    },
+    {
+      "entry_number": "ENT-24-001307",
+      "amount_cents": 5823037,
+      "entry_date": "2024-10-14"
     },
     {
       "entry_number": "ENT-24-001309",

@@ -32,7 +32,7 @@ PO-240030,CUST-003,Harbor & Vale Supply LLC,"Qingdao Marine Fittings Co., Ltd.",
 PO-240031,CUST-001,Northwind Hardware Co.,Dongguan Precision Motor Works,2024-01-29,"Single-phase AC electric motors, 1/2 HP",1210,7525,9105250
 PO-240032,CUST-004,Meridian Building Products,Guangzhou Everfine Lighting Technology,2024-02-04,"Commercial pendant lights, brushed nickel",2210,4608,10183680
 PO-240033,CUST-007,Cascade Electric Wholesale,"Shenzhen Brightway Manufacturing Co., Ltd.",2024-01-30,"Bicycle crank sets, alloy",610,2989,1823290
-PO-240034,CUST-007,Cascade Electric Wholesale,Dongguan Precision Motor Works,2024-01-24,"Single-phase AC electric motors, 1/2 HP",130,5349,695370
+PO-240034,CUST-007,Cascade Electric Wholesale,Dongguan Precision Motor Works,2024-01-24,"Single-phase AC electric motors, 1/2 HP",136,5349,727464
 PO-240035,CUST-007,Cascade Electric Wholesale,Dongguan Precision Motor Works,2024-02-09,"Industrial axial fans, 24-inch",640,8086,5175040
 PO-240036,CUST-002,Ridgeline Outfitters Inc.,Dongguan Precision Motor Works,2024-01-09,"Industrial axial fans, 24-inch",250,12817,3204250
 PO-240037,CUST-007,Cascade Electric Wholesale,Ningbo Hualong Metal Products Co.,2024-01-24,"Stainless steel kitchen sinks, undermount",740,7574,5604760
@@ -70,7 +70,7 @@ PO-240067,CUST-002,Ridgeline Outfitters Inc.,"Qingdao Marine Fittings Co., Ltd."
 PO-240068,CUST-005,Summit Lighting Group,Dongguan Precision Motor Works,2024-03-07,Rotary vane vacuum pumps,400,23665,9466000
 PO-240069,CUST-001,Northwind Hardware Co.,Dongguan Precision Motor Works,2024-03-08,"Molded case circuit breakers, 100A",210,4263,895230
 PO-240070,CUST-001,Northwind Hardware Co.,"Shenzhen Brightway Manufacturing Co., Ltd.",2024-03-27,"Adjustable wrench sets, chrome vanadium",2150,2268,4876200
-PO-240071,CUST-007,Cascade Electric Wholesale,Dongguan Precision Motor Works,2024-04-07,"Industrial axial fans, 24-inch",820,12000,9840000
+PO-240071,CUST-007,Cascade Electric Wholesale,Dongguan Precision Motor Works,2024-04-07,"Industrial axial fans, 24-inch",815,12000,9780000
 PO-240072,CUST-001,Northwind Hardware Co.,Foshan Kaiyuan Plastics Industry,2024-03-13,"Polypropylene storage bins, 60L",520,1330,691600
 PO-240073,CUST-002,Ridgeline Outfitters Inc.,Ningbo Hualong Metal Products Co.,2024-04-03,"Stainless steel kitchen sinks, undermount",800,10928,8742400
 PO-240074,CUST-005,Summit Lighting Group,Guangzhou Everfine Lighting Technology,2024-03-19,"LED ceiling fixtures, 4000K, 40W",760,2916,2216160
@@ -87,7 +87,7 @@ PO-240084,CUST-007,Cascade Electric Wholesale,Guangzhou Everfine Lighting Techno
 PO-240085,CUST-007,Cascade Electric Wholesale,Guangzhou Everfine Lighting Technology,2024-04-13,"Commercial pendant lights, brushed nickel",1560,5999,9358440
 PO-240086,CUST-003,Harbor & Vale Supply LLC,Dongguan Precision Motor Works,2024-04-12,Rotary vane vacuum pumps,900,16809,15128100
 PO-240087,CUST-005,Summit Lighting Group,"Shenzhen Brightway Manufacturing Co., Ltd.",2024-04-08,"Bicycle crank sets, alloy",2150,3217,6916550
-PO-240088,CUST-007,Cascade Electric Wholesale,Dongguan Precision Motor Works,2024-04-13,"Single-phase AC electric motors, 1/2 HP",2250,7085,15941250
+PO-240088,CUST-007,Cascade Electric Wholesale,Dongguan Precision Motor Works,2024-04-13,"Single-phase AC electric motors, 1/2 HP",2241,7085,15877485
 PO-240089,CUST-002,Ridgeline Outfitters Inc.,Dongguan Precision Motor Works,2024-04-23,"Molded case circuit breakers, 100A",1850,4781,8844850
 PO-240090,CUST-004,Meridian Building Products,Dongguan Precision Motor Works,2024-04-18,Rotary vane vacuum pumps,680,21825,14841000
 PO-240091,CUST-003,Harbor & Vale Supply LLC,"Qingdao Marine Fittings Co., Ltd.",2024-04-23,Marine-grade stainless cleats and hinges,1850,1458,2697300
@@ -101,10 +101,9 @@ PO-240098,CUST-004,Meridian Building Products,"Shenzhen Brightway Manufacturing 
 PO-240099,CUST-004,Meridian Building Products,Dongguan Precision Motor Works,2024-05-22,"Single-phase AC electric motors, 1/2 HP",770,5454,4199580
 PO-240100,CUST-006,Bluegrass Distribution Partners,Guangzhou Everfine Lighting Technology,2024-05-27,"LED ceiling fixtures, 4000K, 40W",650,4765,3097250
 PO-240101,CUST-004,Meridian Building Products,Ningbo Hualong Metal Products Co.,2024-05-11,"Stainless steel kitchen sinks, undermount",1240,8939,11084360
-PO-240102,CUST-003,Harbor & Vale Supply LLC,"Qingdao Marine Fittings Co., Ltd.",2024-05-05,Marine-grade stainless cleats and hinges,1700,1768,3005600
+PO-240102,CUST-003,Harbor & Vale Supply LLC,"Qingdao Marine Fittings Co., Ltd.",2024-05-05,Marine-grade stainless cleats and hinges,1709,1768,3021512
 PO-240103,CUST-001,Northwind Hardware Co.,Guangzhou Everfine Lighting Technology,2024-05-12,"LED ceiling fixtures, 4000K, 40W",170,3347,568990
-PO-240104,CUST-004,Meridian Building Products,"Shenzhen Brightway Manufacturing Co., Ltd.",2024-05-21,"Bicycle crank sets, alloy",1940,2653,5146820
-PO-240105,CUST-001,Northwind Hardware Co.,Guangzhou Everfine Lighting Technology,2024-06-05,"Commercial pendant lights, brushed nickel",1210,4320,5227200
+PO-240105,CUST-001,Northwind Hardware Co.,Ningbo Hualong Metal Products Co.,2024-06-05,"Stainless steel kitchen sinks, undermount",1210,7701,9318210
 PO-240106,CUST-008,Pioneer Fabrication Works,Foshan Kaiyuan Plastics Industry,2024-06-07,"Polypropylene storage bins, 60L",2250,1406,3163500
 PO-240107,CUST-006,Bluegrass Distribution Partners,Ningbo Hualong Metal Products Co.,2024-05-23,"Threaded steel pipe fittings, 1-inch",600,260,156000
 PO-240108,CUST-002,Ridgeline Outfitters Inc.,"Shenzhen Brightway Manufacturing Co., Ltd.",2024-06-13,"Adjustable wrench sets, chrome vanadium",450,1331,598950
@@ -139,7 +138,7 @@ PO-240136,CUST-005,Summit Lighting Group,Dongguan Precision Motor Works,2024-07-
 PO-240137,CUST-005,Summit Lighting Group,Foshan Kaiyuan Plastics Industry,2024-07-25,"Polypropylene storage bins, 60L",1760,1475,2596000
 PO-240138,CUST-001,Northwind Hardware Co.,Foshan Kaiyuan Plastics Industry,2024-07-26,"Polypropylene storage bins, 60L",1890,877,1657530
 PO-240139,CUST-003,Harbor & Vale Supply LLC,Guangzhou Everfine Lighting Technology,2024-07-24,"LED ceiling fixtures, 4000K, 40W",120,3815,457800
-PO-240140,CUST-001,Northwind Hardware Co.,Dongguan Precision Motor Works,2024-07-18,"Single-phase AC electric motors, 1/2 HP",2180,4643,10121740
+PO-240140,CUST-001,Northwind Hardware Co.,Dongguan Precision Motor Works,2024-07-18,"Single-phase AC electric motors, 1/2 HP",2173,4643,10089239
 PO-240141,CUST-001,Northwind Hardware Co.,Dongguan Precision Motor Works,2024-07-26,"Single-phase AC electric motors, 1/2 HP",1850,5460,10101000
 PO-240142,CUST-006,Bluegrass Distribution Partners,"Shenzhen Brightway Manufacturing Co., Ltd.",2024-07-28,"Adjustable wrench sets, chrome vanadium",2080,2058,4280640
 PO-240143,CUST-003,Harbor & Vale Supply LLC,"Qingdao Marine Fittings Co., Ltd.",2024-08-05,Marine-grade stainless cleats and hinges,800,1540,1232000
@@ -154,7 +153,7 @@ PO-240151,CUST-001,Northwind Hardware Co.,"Shenzhen Brightway Manufacturing Co.,
 PO-240152,CUST-008,Pioneer Fabrication Works,Ningbo Hualong Metal Products Co.,2024-08-11,"Stainless steel kitchen sinks, undermount",720,11238,8091360
 PO-240153,CUST-001,Northwind Hardware Co.,"Shenzhen Brightway Manufacturing Co., Ltd.",2024-07-30,"Adjustable wrench sets, chrome vanadium",980,2233,2188340
 PO-240154,CUST-005,Summit Lighting Group,Dongguan Precision Motor Works,2024-08-11,"Single-phase AC electric motors, 1/2 HP",1250,4231,5288750
-PO-240155,CUST-008,Pioneer Fabrication Works,Dongguan Precision Motor Works,2024-08-14,Rotary vane vacuum pumps,1510,20598,31102980
+PO-240155,CUST-008,Pioneer Fabrication Works,Dongguan Precision Motor Works,2024-08-14,Rotary vane vacuum pumps,1514,20598,31185372
 PO-240156,CUST-002,Ridgeline Outfitters Inc.,"Qingdao Marine Fittings Co., Ltd.",2024-08-13,Marine-grade stainless cleats and hinges,2120,1638,3472560
 PO-240157,CUST-003,Harbor & Vale Supply LLC,Dongguan Precision Motor Works,2024-08-31,"Molded case circuit breakers, 100A",2120,5215,11055800
 PO-240158,CUST-004,Meridian Building Products,"Shenzhen Brightway Manufacturing Co., Ltd.",2024-08-08,"Adjustable wrench sets, chrome vanadium",900,1390,1251000
@@ -169,7 +168,7 @@ PO-240166,CUST-003,Harbor & Vale Supply LLC,"Shenzhen Brightway Manufacturing Co
 PO-240167,CUST-006,Bluegrass Distribution Partners,Dongguan Precision Motor Works,2024-08-20,"Industrial axial fans, 24-inch",260,8176,2125760
 PO-240168,CUST-006,Bluegrass Distribution Partners,Dongguan Precision Motor Works,2024-09-05,"Single-phase AC electric motors, 1/2 HP",410,7039,2885990
 PO-240169,CUST-007,Cascade Electric Wholesale,Dongguan Precision Motor Works,2024-09-09,"Single-phase AC electric motors, 1/2 HP",650,6461,4199650
-PO-240170,CUST-004,Meridian Building Products,"Qingdao Marine Fittings Co., Ltd.",2024-09-18,Marine-grade stainless cleats and hinges,320,1742,557440
+PO-240170,CUST-004,Meridian Building Products,"Qingdao Marine Fittings Co., Ltd.",2024-09-18,Marine-grade stainless cleats and hinges,319,1742,555698
 PO-240171,CUST-001,Northwind Hardware Co.,Ningbo Hualong Metal Products Co.,2024-09-29,"Stainless steel kitchen sinks, undermount",1720,11823,20335560
 PO-240172,CUST-005,Summit Lighting Group,"Qingdao Marine Fittings Co., Ltd.",2024-09-10,Marine-grade stainless cleats and hinges,850,1841,1564850
 PO-240173,CUST-001,Northwind Hardware Co.,Guangzhou Everfine Lighting Technology,2024-09-12,"LED ceiling fixtures, 4000K, 40W",1140,3945,4497300
@@ -187,7 +186,7 @@ PO-240184,CUST-005,Summit Lighting Group,"Qingdao Marine Fittings Co., Ltd.",202
 PO-240185,CUST-001,Northwind Hardware Co.,Ningbo Hualong Metal Products Co.,2024-09-26,"Stainless steel kitchen sinks, undermount",1200,7936,9523200
 PO-240186,CUST-007,Cascade Electric Wholesale,"Shenzhen Brightway Manufacturing Co., Ltd.",2024-09-25,"Adjustable wrench sets, chrome vanadium",1960,1316,2579360
 PO-240187,CUST-008,Pioneer Fabrication Works,Dongguan Precision Motor Works,2024-09-26,"Industrial axial fans, 24-inch",1250,10698,13372500
-PO-240188,CUST-004,Meridian Building Products,"Qingdao Marine Fittings Co., Ltd.",2024-10-07,"Threaded steel pipe fittings, 1-inch",660,385,254100
+PO-240188,CUST-004,Meridian Building Products,"Qingdao Marine Fittings Co., Ltd.",2024-10-07,"Threaded steel pipe fittings, 1-inch",669,385,257565
 PO-240189,CUST-002,Ridgeline Outfitters Inc.,Dongguan Precision Motor Works,2024-10-12,Rotary vane vacuum pumps,1540,23302,35885080
 PO-240190,CUST-002,Ridgeline Outfitters Inc.,Foshan Kaiyuan Plastics Industry,2024-09-27,"Polypropylene storage bins, 60L",1210,1319,1595990
 PO-240191,CUST-001,Northwind Hardware Co.,Dongguan Precision Motor Works,2024-10-01,Rotary vane vacuum pumps,1650,23231,38331150
@@ -198,5 +197,5 @@ PO-240195,CUST-002,Ridgeline Outfitters Inc.,Ningbo Hualong Metal Products Co.,2
 PO-240196,CUST-001,Northwind Hardware Co.,Dongguan Precision Motor Works,2024-10-29,"Molded case circuit breakers, 100A",360,4380,1576800
 PO-240197,CUST-006,Bluegrass Distribution Partners,Guangzhou Everfine Lighting Technology,2024-10-15,"Commercial pendant lights, brushed nickel",1530,6055,9264150
 PO-240198,CUST-003,Harbor & Vale Supply LLC,"Shenzhen Brightway Manufacturing Co., Ltd.",2024-10-27,"Bicycle crank sets, alloy",320,2462,787840
-PO-240199,CUST-006,Bluegrass Distribution Partners,"Qingdao Marine Fittings Co., Ltd.",2024-10-24,"Threaded steel pipe fittings, 1-inch",900,371,333900
+PO-240199,CUST-006,Bluegrass Distribution Partners,"Qingdao Marine Fittings Co., Ltd.",2024-10-24,"Threaded steel pipe fittings, 1-inch",893,371,331303
 PO-240200,CUST-003,Harbor & Vale Supply LLC,"Qingdao Marine Fittings Co., Ltd.",2024-10-31,Marine-grade stainless cleats and hinges,480,1518,728640

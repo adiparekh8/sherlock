@@ -268,9 +268,9 @@ def generate(out: Path, seed: int = 42, n_shipments: int = 200) -> dict:
     PO_TYPO_FUZZY = {27, 149}  # po_number has a typo, fuzzy match rescues it
     PO_DANGLING = {104}  # po_number refers to nothing, no fuzzy match either
     INVOICE_AMOUNT_OFF = {15, 52, 97, 134, 176}  # invoice total disagrees with PO beyond tolerance
-    NOT_ON_REFUND = set(rng.sample(range(1, n_shipments + 1), 28)) - {
-        SPLIT_IDX, MISSING_INVOICE_IDX, 104, 27, 149, 19, 66, 131, 177, 15, 52, 97, 134, 176, 8, 45
-    }
+    PLANTED = ({SPLIT_IDX, MISSING_INVOICE_IDX} | QTY_DRIFT_SMALL | QTY_DRIFT_LARGE | BLANK_PO_FUZZY | PO_TYPO_FUZZY
+               | PO_DANGLING | INVOICE_AMOUNT_OFF)
+    NOT_ON_REFUND = set(rng.sample(range(1, n_shipments + 1), 28)) - PLANTED
     CONSOLIDATED_PAIRS = [(3, 4), (30, 31), (60, 61), (80, 81), (110, 111), (150, 151), (190, 191)]
     second_of_pair = {b: a for a, b in CONSOLIDATED_PAIRS}
 
@@ -320,12 +320,19 @@ def generate(out: Path, seed: int = 42, n_shipments: int = 200) -> dict:
 
         po_qty = qty
         if i in QTY_DRIFT_SMALL:
-            po_qty = qty + rng.choice([-1, 1]) * max(10, qty * 3 // 100 // 10 * 10)
+            po_qty = qty + rng.choice([-1, 1]) * max(1, qty * 3 // 100)  # 3%, inside the 5% tolerance
             mismatches.append({"kind": "quantity_drift_within_tolerance", "shipment_id": sid, "po_number": po_number})
         elif i in QTY_DRIFT_LARGE:
             po_qty = qty + rng.choice([-1, 1]) * max(50, qty * 22 // 100 // 10 * 10)
             mismatches.append({"kind": "quantity_drift_beyond_tolerance", "shipment_id": sid, "po_number": po_number,
                                "expect": "review_queue"})
+
+        if i in PO_DANGLING:
+            # The shipment points at a PO that was never entered; no PO or invoice exists for it at all.
+            shipments.append(Shipment(sid, entry, bol, iso(ship_date), iso(arrival), supplier, desc, hts, qty,
+                                      declared, duty, "PO-23X9999"))
+            mismatches.append({"kind": "dangling_po_number_no_match", "shipment_id": sid, "expect": "review_queue"})
+            continue
 
         po = PurchaseOrder(po_number, cust_id, customer_name[cust_id], supplier, iso(order_date), desc, po_qty,
                            unit_price, po_qty * unit_price)
@@ -346,12 +353,9 @@ def generate(out: Path, seed: int = 42, n_shipments: int = 200) -> dict:
             ship_po = ""
             mismatches.append({"kind": "blank_po_number_fuzzy_match", "shipment_id": sid, "po_number": po_number})
         elif i in PO_TYPO_FUZZY:
-            ship_po = po_number[:-2] + po_number[-1] + po_number[-2]  # transpose last two digits
+            ship_po = po_number.replace("240", "24O", 1)  # zero keyed as letter O: PO-24O0027
             mismatches.append({"kind": "po_number_typo_fuzzy_match", "shipment_id": sid, "po_number": po_number,
                                "expect": "review_queue"})
-        elif i in PO_DANGLING:
-            ship_po = "PO-23X9999"
-            mismatches.append({"kind": "dangling_po_number_no_match", "shipment_id": sid, "expect": "review_queue"})
 
         shipments.append(Shipment(sid, entry, bol, iso(ship_date), iso(arrival), supplier, desc, hts, qty,
                                   declared, duty, ship_po))
