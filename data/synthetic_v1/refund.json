@@ -1,0 +1,862 @@
+{
+  "refund_id": "CBP-REF-2025-0917",
+  "importer": "Pacific Crest Imports LLC",
+  "importer_of_record_number": "91-4472108",
+  "amount_cents": 206956702,
+  "received_date": "2025-09-17",
+  "currency": "USD",
+  "source": "U.S. Customs and Border Protection",
+  "reference": "Section 301 exclusion reliquidation refund, ACH trace 2025091700431",
+  "entries": [
+    {
+      "entry_number": "ENT-24-001002",
+      "amount_cents": 96750,
+      "entry_date": "2024-02-06"
+    },
+    {
+      "entry_number": "ENT-24-001003",
+      "amount_cents": 193200,
+      "entry_date": "2024-02-06"
+    },
+    {
+      "entry_number": "ENT-24-001006",
+      "amount_cents": 4697900,
+      "entry_date": "2024-02-13"
+    },
+    {
+      "entry_number": "ENT-24-001009",
+      "amount_cents": 319200,
+      "entry_date": "2024-02-13"
+    },
+    {
+      "entry_number": "ENT-24-001011",
+      "amount_cents": 3727800,
+      "entry_date": "2024-02-08"
+    },
+    {
+      "entry_number": "ENT-24-001016",
+      "amount_cents": 1647562,
+      "entry_date": "2024-02-17"
+    },
+    {
+      "entry_number": "ENT-24-001020",
+      "amount_cents": 3577862,
+      "entry_date": "2024-02-20"
+    },
+    {
+      "entry_number": "ENT-24-001021",
+      "amount_cents": 21200,
+      "entry_date": "2024-02-18"
+    },
+    {
+      "entry_number": "ENT-24-001022",
+      "amount_cents": 560787,
+      "entry_date": "2024-02-27"
+    },
+    {
+      "entry_number": "ENT-24-001023",
+      "amount_cents": 293250,
+      "entry_date": "2024-02-26"
+    },
+    {
+      "entry_number": "ENT-24-001026",
+      "amount_cents": 9938775,
+      "entry_date": "2024-02-21"
+    },
+    {
+      "entry_number": "ENT-24-001027",
+      "amount_cents": 446250,
+      "entry_date": "2024-02-21"
+    },
+    {
+      "entry_number": "ENT-24-001028",
+      "amount_cents": 326025,
+      "entry_date": "2024-02-20"
+    },
+    {
+      "entry_number": "ENT-24-001030",
+      "amount_cents": 209700,
+      "entry_date": "2024-03-02"
+    },
+    {
+      "entry_number": "ENT-24-001033",
+      "amount_cents": 846087,
+      "entry_date": "2024-02-25"
+    },
+    {
+      "entry_number": "ENT-24-001035",
+      "amount_cents": 283062,
+      "entry_date": "2024-02-28"
+    },
+    {
+      "entry_number": "ENT-24-001038",
+      "amount_cents": 238275,
+      "entry_date": "2024-03-01"
+    },
+    {
+      "entry_number": "ENT-24-001039",
+      "amount_cents": 813750,
+      "entry_date": "2024-03-02"
+    },
+    {
+      "entry_number": "ENT-24-001041",
+      "amount_cents": 536250,
+      "entry_date": "2024-03-13"
+    },
+    {
+      "entry_number": "ENT-24-001048",
+      "amount_cents": 76050,
+      "entry_date": "2024-03-12"
+    },
+    {
+      "entry_number": "ENT-24-001050",
+      "amount_cents": 235712,
+      "entry_date": "2024-03-20"
+    },
+    {
+      "entry_number": "ENT-24-001051",
+      "amount_cents": 572725,
+      "entry_date": "2024-03-13"
+    },
+    {
+      "entry_number": "ENT-24-001054",
+      "amount_cents": 2230150,
+      "entry_date": "2024-03-25"
+    },
+    {
+      "entry_number": "ENT-24-001059",
+      "amount_cents": 1958750,
+      "entry_date": "2024-03-25"
+    },
+    {
+      "entry_number": "ENT-24-001061",
+      "amount_cents": 1958612,
+      "entry_date": "2024-03-28"
+    },
+    {
+      "entry_number": "ENT-24-001064",
+      "amount_cents": 325587,
+      "entry_date": "2024-03-23"
+    },
+    {
+      "entry_number": "ENT-24-001066",
+      "amount_cents": 144025,
+      "entry_date": "2024-03-29"
+    },
+    {
+      "entry_number": "ENT-24-001067",
+      "amount_cents": 995200,
+      "entry_date": "2024-03-29"
+    },
+    {
+      "entry_number": "ENT-24-001071",
+      "amount_cents": 1000850,
+      "entry_date": "2024-04-02"
+    },
+    {
+      "entry_number": "ENT-24-001073",
+      "amount_cents": 2390875,
+      "entry_date": "2024-03-29"
+    },
+    {
+      "entry_number": "ENT-24-001074",
+      "amount_cents": 1043525,
+      "entry_date": "2024-04-06"
+    },
+    {
+      "entry_number": "ENT-24-001076",
+      "amount_cents": 499875,
+      "entry_date": "2024-04-05"
+    },
+    {
+      "entry_number": "ENT-24-001078",
+      "amount_cents": 1128500,
+      "entry_date": "2024-04-14"
+    },
+    {
+      "entry_number": "ENT-24-001081",
+      "amount_cents": 482662,
+      "entry_date": "2024-04-07"
+    },
+    {
+      "entry_number": "ENT-24-001083",
+      "amount_cents": 128325,
+      "entry_date": "2024-04-06"
+    },
+    {
+      "entry_number": "ENT-24-001086",
+      "amount_cents": 352450,
+      "entry_date": "2024-04-12"
+    },
+    {
+      "entry_number": "ENT-24-001087",
+      "amount_cents": 160425,
+      "entry_date": "2024-04-10"
+    },
+    {
+      "entry_number": "ENT-24-001090",
+      "amount_cents": 2082700,
+      "entry_date": "2024-04-26"
+    },
+    {
+      "entry_number": "ENT-24-001093",
+      "amount_cents": 1615000,
+      "entry_date": "2024-04-19"
+    },
+    {
+      "entry_number": "ENT-24-001094",
+      "amount_cents": 526150,
+      "entry_date": "2024-04-20"
+    },
+    {
+      "entry_number": "ENT-24-001096",
+      "amount_cents": 439200,
+      "entry_date": "2024-04-22"
+    },
+    {
+      "entry_number": "ENT-24-001099",
+      "amount_cents": 3438300,
+      "entry_date": "2024-05-01"
+    },
+    {
+      "entry_number": "ENT-24-001104",
+      "amount_cents": 218012,
+      "entry_date": "2024-05-03"
+    },
+    {
+      "entry_number": "ENT-24-001106",
+      "amount_cents": 1722825,
+      "entry_date": "2024-04-26"
+    },
+    {
+      "entry_number": "ENT-24-001108",
+      "amount_cents": 1963025,
+      "entry_date": "2024-05-08"
+    },
+    {
+      "entry_number": "ENT-24-001111",
+      "amount_cents": 1368912,
+      "entry_date": "2024-04-29"
+    },
+    {
+      "entry_number": "ENT-24-001117",
+      "amount_cents": 890525,
+      "entry_date": "2024-05-04"
+    },
+    {
+      "entry_number": "ENT-24-001122",
+      "amount_cents": 174687,
+      "entry_date": "2024-05-10"
+    },
+    {
+      "entry_number": "ENT-24-001124",
+      "amount_cents": 826875,
+      "entry_date": "2024-05-11"
+    },
+    {
+      "entry_number": "ENT-24-001126",
+      "amount_cents": 447037,
+      "entry_date": "2024-05-12"
+    },
+    {
+      "entry_number": "ENT-24-001131",
+      "amount_cents": 549600,
+      "entry_date": "2024-05-17"
+    },
+    {
+      "entry_number": "ENT-24-001133",
+      "amount_cents": 867650,
+      "entry_date": "2024-05-25"
+    },
+    {
+      "entry_number": "ENT-24-001134",
+      "amount_cents": 1569150,
+      "entry_date": "2024-05-19"
+    },
+    {
+      "entry_number": "ENT-24-001135",
+      "amount_cents": 36437,
+      "entry_date": "2024-05-28"
+    },
+    {
+      "entry_number": "ENT-24-001138",
+      "amount_cents": 1753000,
+      "entry_date": "2024-05-20"
+    },
+    {
+      "entry_number": "ENT-24-001139",
+      "amount_cents": 159862,
+      "entry_date": "2024-05-22"
+    },
+    {
+      "entry_number": "ENT-24-001140",
+      "amount_cents": 870750,
+      "entry_date": "2024-05-24"
+    },
+    {
+      "entry_number": "ENT-24-001145",
+      "amount_cents": 123500,
+      "entry_date": "2024-05-27"
+    },
+    {
+      "entry_number": "ENT-24-001146",
+      "amount_cents": 1619000,
+      "entry_date": "2024-05-29"
+    },
+    {
+      "entry_number": "ENT-24-001148",
+      "amount_cents": 410400,
+      "entry_date": "2024-05-29"
+    },
+    {
+      "entry_number": "ENT-24-001149",
+      "amount_cents": 708400,
+      "entry_date": "2024-06-08"
+    },
+    {
+      "entry_number": "ENT-24-001152",
+      "amount_cents": 269775,
+      "entry_date": "2024-06-03"
+    },
+    {
+      "entry_number": "ENT-24-001154",
+      "amount_cents": 525825,
+      "entry_date": "2024-06-14"
+    },
+    {
+      "entry_number": "ENT-24-001157",
+      "amount_cents": 815150,
+      "entry_date": "2024-06-09"
+    },
+    {
+      "entry_number": "ENT-24-001159",
+      "amount_cents": 2987600,
+      "entry_date": "2024-06-08"
+    },
+    {
+      "entry_number": "ENT-24-001160",
+      "amount_cents": 2319000,
+      "entry_date": "2024-06-19"
+    },
+    {
+      "entry_number": "ENT-24-001163",
+      "amount_cents": 1030750,
+      "entry_date": "2024-06-18"
+    },
+    {
+      "entry_number": "ENT-24-001164",
+      "amount_cents": 5185962,
+      "entry_date": "2024-06-20"
+    },
+    {
+      "entry_number": "ENT-24-001167",
+      "amount_cents": 892125,
+      "entry_date": "2024-06-21"
+    },
+    {
+      "entry_number": "ENT-24-001169",
+      "amount_cents": 1671150,
+      "entry_date": "2024-06-30"
+    },
+    {
+      "entry_number": "ENT-24-001171",
+      "amount_cents": 2909250,
+      "entry_date": "2024-06-23"
+    },
+    {
+      "entry_number": "ENT-24-001174",
+      "amount_cents": 1330312,
+      "entry_date": "2024-07-01"
+    },
+    {
+      "entry_number": "ENT-24-001175",
+      "amount_cents": 3147375,
+      "entry_date": "2024-06-29"
+    },
+    {
+      "entry_number": "ENT-24-001178",
+      "amount_cents": 1579437,
+      "entry_date": "2024-06-26"
+    },
+    {
+      "entry_number": "ENT-24-001181",
+      "amount_cents": 2968200,
+      "entry_date": "2024-07-01"
+    },
+    {
+      "entry_number": "ENT-24-001182",
+      "amount_cents": 499500,
+      "entry_date": "2024-06-27"
+    },
+    {
+      "entry_number": "ENT-24-001183",
+      "amount_cents": 2286837,
+      "entry_date": "2024-07-12"
+    },
+    {
+      "entry_number": "ENT-24-001185",
+      "amount_cents": 423900,
+      "entry_date": "2024-07-07"
+    },
+    {
+      "entry_number": "ENT-24-001187",
+      "amount_cents": 310200,
+      "entry_date": "2024-07-08"
+    },
+    {
+      "entry_number": "ENT-24-001190",
+      "amount_cents": 511325,
+      "entry_date": "2024-07-06"
+    },
+    {
+      "entry_number": "ENT-24-001191",
+      "amount_cents": 3391500,
+      "entry_date": "2024-07-19"
+    },
+    {
+      "entry_number": "ENT-24-001194",
+      "amount_cents": 236600,
+      "entry_date": "2024-07-18"
+    },
+    {
+      "entry_number": "ENT-24-001197",
+      "amount_cents": 1333312,
+      "entry_date": "2024-07-12"
+    },
+    {
+      "entry_number": "ENT-24-001199",
+      "amount_cents": 777700,
+      "entry_date": "2024-07-24"
+    },
+    {
+      "entry_number": "ENT-24-001202",
+      "amount_cents": 573625,
+      "entry_date": "2024-07-24"
+    },
+    {
+      "entry_number": "ENT-24-001204",
+      "amount_cents": 1979350,
+      "entry_date": "2024-07-27"
+    },
+    {
+      "entry_number": "ENT-24-001207",
+      "amount_cents": 587225,
+      "entry_date": "2024-07-25"
+    },
+    {
+      "entry_number": "ENT-24-001208",
+      "amount_cents": 109437,
+      "entry_date": "2024-07-19"
+    },
+    {
+      "entry_number": "ENT-24-001210",
+      "amount_cents": 919075,
+      "entry_date": "2024-07-30"
+    },
+    {
+      "entry_number": "ENT-24-001212",
+      "amount_cents": 968000,
+      "entry_date": "2024-07-22"
+    },
+    {
+      "entry_number": "ENT-24-001213",
+      "amount_cents": 632812,
+      "entry_date": "2024-07-24"
+    },
+    {
+      "entry_number": "ENT-24-001214",
+      "amount_cents": 30000,
+      "entry_date": "2024-07-29"
+    },
+    {
+      "entry_number": "ENT-24-001218",
+      "amount_cents": 5923737,
+      "entry_date": "2024-08-07"
+    },
+    {
+      "entry_number": "ENT-24-001220",
+      "amount_cents": 2940962,
+      "entry_date": "2024-08-03"
+    },
+    {
+      "entry_number": "ENT-24-001223",
+      "amount_cents": 374000,
+      "entry_date": "2024-08-11"
+    },
+    {
+      "entry_number": "ENT-24-001225",
+      "amount_cents": 581625,
+      "entry_date": "2024-08-11"
+    },
+    {
+      "entry_number": "ENT-24-001226",
+      "amount_cents": 448037,
+      "entry_date": "2024-08-16"
+    },
+    {
+      "entry_number": "ENT-24-001229",
+      "amount_cents": 2408912,
+      "entry_date": "2024-08-16"
+    },
+    {
+      "entry_number": "ENT-24-001231",
+      "amount_cents": 782400,
+      "entry_date": "2024-08-20"
+    },
+    {
+      "entry_number": "ENT-24-001233",
+      "amount_cents": 436625,
+      "entry_date": "2024-08-18"
+    },
+    {
+      "entry_number": "ENT-24-001234",
+      "amount_cents": 249287,
+      "entry_date": "2024-08-19"
+    },
+    {
+      "entry_number": "ENT-24-001236",
+      "amount_cents": 1537250,
+      "entry_date": "2024-08-22"
+    },
+    {
+      "entry_number": "ENT-24-001237",
+      "amount_cents": 1577812,
+      "entry_date": "2024-08-17"
+    },
+    {
+      "entry_number": "ENT-24-001240",
+      "amount_cents": 1046650,
+      "entry_date": "2024-08-22"
+    },
+    {
+      "entry_number": "ENT-24-001241",
+      "amount_cents": 1210387,
+      "entry_date": "2024-09-01"
+    },
+    {
+      "entry_number": "ENT-24-001243",
+      "amount_cents": 248625,
+      "entry_date": "2024-09-03"
+    },
+    {
+      "entry_number": "ENT-24-001246",
+      "amount_cents": 987000,
+      "entry_date": "2024-08-28"
+    },
+    {
+      "entry_number": "ENT-24-001249",
+      "amount_cents": 873437,
+      "entry_date": "2024-09-04"
+    },
+    {
+      "entry_number": "ENT-24-001252",
+      "amount_cents": 508462,
+      "entry_date": "2024-09-05"
+    },
+    {
+      "entry_number": "ENT-24-001255",
+      "amount_cents": 863500,
+      "entry_date": "2024-09-03"
+    },
+    {
+      "entry_number": "ENT-24-001257",
+      "amount_cents": 547137,
+      "entry_date": "2024-09-04"
+    },
+    {
+      "entry_number": "ENT-24-001262",
+      "amount_cents": 2239712,
+      "entry_date": "2024-09-15"
+    },
+    {
+      "entry_number": "ENT-24-001265",
+      "amount_cents": 1635250,
+      "entry_date": "2024-09-06"
+    },
+    {
+      "entry_number": "ENT-24-001268",
+      "amount_cents": 1721500,
+      "entry_date": "2024-09-16"
+    },
+    {
+      "entry_number": "ENT-24-001269",
+      "amount_cents": 1186800,
+      "entry_date": "2024-09-08"
+    },
+    {
+      "entry_number": "ENT-24-001271",
+      "amount_cents": 2154000,
+      "entry_date": "2024-09-20"
+    },
+    {
+      "entry_number": "ENT-24-001272",
+      "amount_cents": 485100,
+      "entry_date": "2024-09-23"
+    },
+    {
+      "entry_number": "ENT-24-001274",
+      "amount_cents": 519200,
+      "entry_date": "2024-09-28"
+    },
+    {
+      "entry_number": "ENT-24-001277",
+      "amount_cents": 307125,
+      "entry_date": "2024-09-23"
+    },
+    {
+      "entry_number": "ENT-24-001279",
+      "amount_cents": 81750,
+      "entry_date": "2024-09-19"
+    },
+    {
+      "entry_number": "ENT-24-001284",
+      "amount_cents": 1870812,
+      "entry_date": "2024-09-29"
+    },
+    {
+      "entry_number": "ENT-24-001286",
+      "amount_cents": 764400,
+      "entry_date": "2024-09-29"
+    },
+    {
+      "entry_number": "ENT-24-001287",
+      "amount_cents": 237000,
+      "entry_date": "2024-10-03"
+    },
+    {
+      "entry_number": "ENT-24-001290",
+      "amount_cents": 127125,
+      "entry_date": "2024-09-28"
+    },
+    {
+      "entry_number": "ENT-24-001291",
+      "amount_cents": 1100750,
+      "entry_date": "2024-10-03"
+    },
+    {
+      "entry_number": "ENT-24-001294",
+      "amount_cents": 3088250,
+      "entry_date": "2024-10-15"
+    },
+    {
+      "entry_number": "ENT-24-001297",
+      "amount_cents": 1204450,
+      "entry_date": "2024-10-14"
+    },
+    {
+      "entry_number": "ENT-24-001299",
+      "amount_cents": 53475,
+      "entry_date": "2024-10-17"
+    },
+    {
+      "entry_number": "ENT-24-001301",
+      "amount_cents": 916674,
+      "entry_date": "2024-10-09"
+    },
+    {
+      "entry_number": "ENT-24-001303",
+      "amount_cents": 390775,
+      "entry_date": "2024-10-24"
+    },
+    {
+      "entry_number": "ENT-24-001304",
+      "amount_cents": 1057812,
+      "entry_date": "2024-10-16"
+    },
+    {
+      "entry_number": "ENT-24-001309",
+      "amount_cents": 620100,
+      "entry_date": "2024-10-22"
+    },
+    {
+      "entry_number": "ENT-24-001312",
+      "amount_cents": 1974250,
+      "entry_date": "2024-10-30"
+    },
+    {
+      "entry_number": "ENT-24-001314",
+      "amount_cents": 231750,
+      "entry_date": "2024-10-23"
+    },
+    {
+      "entry_number": "ENT-24-001317",
+      "amount_cents": 225225,
+      "entry_date": "2024-10-28"
+    },
+    {
+      "entry_number": "ENT-24-001318",
+      "amount_cents": 288200,
+      "entry_date": "2024-10-24"
+    },
+    {
+      "entry_number": "ENT-24-001319",
+      "amount_cents": 667437,
+      "entry_date": "2024-10-30"
+    },
+    {
+      "entry_number": "ENT-24-001321",
+      "amount_cents": 1025950,
+      "entry_date": "2024-11-05"
+    },
+    {
+      "entry_number": "ENT-24-001322",
+      "amount_cents": 319800,
+      "entry_date": "2024-11-05"
+    },
+    {
+      "entry_number": "ENT-24-001324",
+      "amount_cents": 1093650,
+      "entry_date": "2024-11-02"
+    },
+    {
+      "entry_number": "ENT-24-001326",
+      "amount_cents": 681675,
+      "entry_date": "2024-11-04"
+    },
+    {
+      "entry_number": "ENT-24-001329",
+      "amount_cents": 555037,
+      "entry_date": "2024-11-19"
+    },
+    {
+      "entry_number": "ENT-24-001331",
+      "amount_cents": 807625,
+      "entry_date": "2024-11-12"
+    },
+    {
+      "entry_number": "ENT-24-001334",
+      "amount_cents": 103850,
+      "entry_date": "2024-11-12"
+    },
+    {
+      "entry_number": "ENT-24-001335",
+      "amount_cents": 3631350,
+      "entry_date": "2024-11-16"
+    },
+    {
+      "entry_number": "ENT-24-001338",
+      "amount_cents": 279437,
+      "entry_date": "2024-11-23"
+    },
+    {
+      "entry_number": "ENT-24-001341",
+      "amount_cents": 864975,
+      "entry_date": "2024-11-17"
+    },
+    {
+      "entry_number": "ENT-24-001345",
+      "amount_cents": 224950,
+      "entry_date": "2024-11-20"
+    },
+    {
+      "entry_number": "ENT-24-001347",
+      "amount_cents": 333000,
+      "entry_date": "2024-11-27"
+    },
+    {
+      "entry_number": "ENT-24-001349",
+      "amount_cents": 2672775,
+      "entry_date": "2024-11-21"
+    },
+    {
+      "entry_number": "ENT-24-001351",
+      "amount_cents": 512812,
+      "entry_date": "2024-11-27"
+    },
+    {
+      "entry_number": "ENT-24-001354",
+      "amount_cents": 5346425,
+      "entry_date": "2024-11-29"
+    },
+    {
+      "entry_number": "ENT-24-001355",
+      "amount_cents": 1892925,
+      "entry_date": "2024-12-08"
+    },
+    {
+      "entry_number": "ENT-24-001356",
+      "amount_cents": 2002987,
+      "entry_date": "2024-12-06"
+    },
+    {
+      "entry_number": "ENT-24-001359",
+      "amount_cents": 2329525,
+      "entry_date": "2024-12-05"
+    },
+    {
+      "entry_number": "ENT-24-001362",
+      "amount_cents": 596700,
+      "entry_date": "2024-12-06"
+    },
+    {
+      "entry_number": "ENT-24-001365",
+      "amount_cents": 514175,
+      "entry_date": "2024-12-10"
+    },
+    {
+      "entry_number": "ENT-24-001368",
+      "amount_cents": 1831500,
+      "entry_date": "2024-12-06"
+    },
+    {
+      "entry_number": "ENT-24-001369",
+      "amount_cents": 477750,
+      "entry_date": "2024-12-09"
+    },
+    {
+      "entry_number": "ENT-24-001372",
+      "amount_cents": 2476562,
+      "entry_date": "2024-12-16"
+    },
+    {
+      "entry_number": "ENT-24-001375",
+      "amount_cents": 44687,
+      "entry_date": "2024-12-20"
+    },
+    {
+      "entry_number": "ENT-24-001378",
+      "amount_cents": 7666312,
+      "entry_date": "2024-12-19"
+    },
+    {
+      "entry_number": "ENT-24-001384",
+      "amount_cents": 1337825,
+      "entry_date": "2024-12-23"
+    },
+    {
+      "entry_number": "ENT-24-001386",
+      "amount_cents": 1985750,
+      "entry_date": "2024-12-19"
+    },
+    {
+      "entry_number": "ENT-24-001389",
+      "amount_cents": 2043225,
+      "entry_date": "2024-12-25"
+    },
+    {
+      "entry_number": "ENT-24-001392",
+      "amount_cents": 292050,
+      "entry_date": "2025-01-02"
+    },
+    {
+      "entry_number": "ENT-24-001395",
+      "amount_cents": 1654312,
+      "entry_date": "2024-12-26"
+    },
+    {
+      "entry_number": "ENT-24-001397",
+      "amount_cents": 63250,
+      "entry_date": "2025-01-09"
+    },
+    {
+      "entry_number": "ENT-24-001399",
+      "amount_cents": 145800,
+      "entry_date": "2025-01-08"
+    },
+    {
+      "entry_number": "ENT-24-009999",
+      "amount_cents": 412000,
+      "entry_date": "2024-08-19"
+    }
+  ]
+}

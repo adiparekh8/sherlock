@@ -1,0 +1,264 @@
+{
+  "dataset": "synthetic_v1",
+  "generator": "scripts/make_synthetic.py",
+  "seed": 42,
+  "importer": "Pacific Crest Imports LLC",
+  "files": {
+    "refund": "refund.json",
+    "shipments": "shipments.csv",
+    "purchase_orders": "purchase_orders.csv",
+    "invoices": "invoices.csv",
+    "contracts_dir": "contracts"
+  },
+  "contracts": [
+    {
+      "file": "contracts/CUST-001_northwind.pdf",
+      "customer_id": "CUST-001",
+      "customer_name": "Northwind Hardware Co.",
+      "pages": 3,
+      "clause_kind": "clear_refund_obligation"
+    },
+    {
+      "file": "contracts/CUST-002_ridgeline.pdf",
+      "customer_id": "CUST-002",
+      "customer_name": "Ridgeline Outfitters Inc.",
+      "pages": 2,
+      "clause_kind": "no_refund_obligation"
+    },
+    {
+      "file": "contracts/CUST-003_harbor.pdf",
+      "customer_id": "CUST-003",
+      "customer_name": "Harbor & Vale Supply LLC",
+      "pages": 2,
+      "clause_kind": "vague"
+    },
+    {
+      "file": "contracts/CUST-004_meridian.pdf",
+      "customer_id": "CUST-004",
+      "customer_name": "Meridian Building Products",
+      "pages": 2,
+      "clause_kind": "no_tariff_language"
+    },
+    {
+      "file": "contracts/CUST-005_summit.pdf",
+      "customer_id": "CUST-005",
+      "customer_name": "Summit Lighting Group",
+      "pages": 2,
+      "clause_kind": "clear_refund_obligation"
+    },
+    {
+      "file": "contracts/CUST-006_bluegrass.pdf",
+      "customer_id": "CUST-006",
+      "customer_name": "Bluegrass Distribution Partners",
+      "pages": 2,
+      "clause_kind": "surcharge_silent_on_refund"
+    },
+    {
+      "file": "contracts/CUST-007_cascade.pdf",
+      "customer_id": "CUST-007",
+      "customer_name": "Cascade Electric Wholesale",
+      "pages": 2,
+      "clause_kind": "refund_obligation_net_of_costs"
+    },
+    {
+      "file": "contracts/CUST-008_pioneer.pdf",
+      "customer_id": "CUST-008",
+      "customer_name": "Pioneer Fabrication Works",
+      "pages": 2,
+      "clause_kind": "ddp_no_passthrough"
+    }
+  ],
+  "hard_cases": [
+    {
+      "id": "split_po",
+      "kind": "shipment_split_across_pos",
+      "shipment_id": "SHP-0057",
+      "entry_number": "ENT-24-001117",
+      "po_numbers": [
+        "PO-240057A",
+        "PO-240057B"
+      ],
+      "expect": "review_queue",
+      "description": "Shipment has no PO number; two POs from the same supplier for the same product have quantities that sum to the shipment quantity."
+    },
+    {
+      "id": "vague_surcharge",
+      "kind": "vague_surcharge_clause",
+      "customer_id": "CUST-003",
+      "contract_file": "contracts/CUST-003_harbor.pdf",
+      "page": 2,
+      "expect": "pending_review",
+      "description": "Clause lets Seller adjust prices 'at its reasonable discretion' and promises only good-faith discussion of reductions. Whether a refund is owed is not decidable from the text."
+    },
+    {
+      "id": "missing_invoice",
+      "kind": "missing_invoice",
+      "shipment_id": "SHP-0123",
+      "po_number": "PO-240123",
+      "expect": "review_queue",
+      "description": "Shipment and PO match cleanly but no invoice exists for the PO, so the customer was never billed the surcharge the refund would reverse."
+    }
+  ],
+  "other_mismatches": [
+    {
+      "kind": "blank_po_number_fuzzy_match",
+      "shipment_id": "SHP-0008",
+      "po_number": "PO-240008"
+    },
+    {
+      "kind": "quantity_drift_within_tolerance",
+      "shipment_id": "SHP-0012",
+      "po_number": "PO-240012"
+    },
+    {
+      "kind": "invoice_amount_disagrees_with_po",
+      "shipment_id": "SHP-0015",
+      "invoice_number": "INV-240015"
+    },
+    {
+      "kind": "quantity_drift_beyond_tolerance",
+      "shipment_id": "SHP-0019",
+      "po_number": "PO-240019",
+      "expect": "review_queue"
+    },
+    {
+      "kind": "po_number_typo_fuzzy_match",
+      "shipment_id": "SHP-0027",
+      "po_number": "PO-240027",
+      "expect": "review_queue"
+    },
+    {
+      "kind": "quantity_drift_within_tolerance",
+      "shipment_id": "SHP-0034",
+      "po_number": "PO-240034"
+    },
+    {
+      "kind": "blank_po_number_fuzzy_match",
+      "shipment_id": "SHP-0045",
+      "po_number": "PO-240045"
+    },
+    {
+      "kind": "invoice_amount_disagrees_with_po",
+      "shipment_id": "SHP-0052",
+      "invoice_number": "INV-240052"
+    },
+    {
+      "kind": "quantity_drift_beyond_tolerance",
+      "shipment_id": "SHP-0066",
+      "po_number": "PO-240066",
+      "expect": "review_queue"
+    },
+    {
+      "kind": "quantity_drift_within_tolerance",
+      "shipment_id": "SHP-0071",
+      "po_number": "PO-240071"
+    },
+    {
+      "kind": "quantity_drift_within_tolerance",
+      "shipment_id": "SHP-0088",
+      "po_number": "PO-240088"
+    },
+    {
+      "kind": "blank_po_number_fuzzy_match",
+      "shipment_id": "SHP-0093",
+      "po_number": "PO-240093"
+    },
+    {
+      "kind": "invoice_amount_disagrees_with_po",
+      "shipment_id": "SHP-0097",
+      "invoice_number": "INV-240097"
+    },
+    {
+      "kind": "quantity_drift_within_tolerance",
+      "shipment_id": "SHP-0102",
+      "po_number": "PO-240102"
+    },
+    {
+      "kind": "dangling_po_number_no_match",
+      "shipment_id": "SHP-0104",
+      "expect": "review_queue"
+    },
+    {
+      "kind": "blank_po_number_fuzzy_match",
+      "shipment_id": "SHP-0118",
+      "po_number": "PO-240118"
+    },
+    {
+      "kind": "quantity_drift_beyond_tolerance",
+      "shipment_id": "SHP-0131",
+      "po_number": "PO-240131",
+      "expect": "review_queue"
+    },
+    {
+      "kind": "invoice_amount_disagrees_with_po",
+      "shipment_id": "SHP-0134",
+      "invoice_number": "INV-240134"
+    },
+    {
+      "kind": "quantity_drift_within_tolerance",
+      "shipment_id": "SHP-0140",
+      "po_number": "PO-240140"
+    },
+    {
+      "kind": "po_number_typo_fuzzy_match",
+      "shipment_id": "SHP-0149",
+      "po_number": "PO-240149",
+      "expect": "review_queue"
+    },
+    {
+      "kind": "quantity_drift_within_tolerance",
+      "shipment_id": "SHP-0155",
+      "po_number": "PO-240155"
+    },
+    {
+      "kind": "blank_po_number_fuzzy_match",
+      "shipment_id": "SHP-0162",
+      "po_number": "PO-240162"
+    },
+    {
+      "kind": "quantity_drift_within_tolerance",
+      "shipment_id": "SHP-0170",
+      "po_number": "PO-240170"
+    },
+    {
+      "kind": "invoice_amount_disagrees_with_po",
+      "shipment_id": "SHP-0176",
+      "invoice_number": "INV-240176"
+    },
+    {
+      "kind": "quantity_drift_beyond_tolerance",
+      "shipment_id": "SHP-0177",
+      "po_number": "PO-240177",
+      "expect": "review_queue"
+    },
+    {
+      "kind": "blank_po_number_fuzzy_match",
+      "shipment_id": "SHP-0183",
+      "po_number": "PO-240183"
+    },
+    {
+      "kind": "quantity_drift_within_tolerance",
+      "shipment_id": "SHP-0188",
+      "po_number": "PO-240188"
+    },
+    {
+      "kind": "quantity_drift_within_tolerance",
+      "shipment_id": "SHP-0199",
+      "po_number": "PO-240199"
+    },
+    {
+      "kind": "refund_entry_without_shipment",
+      "entry_number": "ENT-24-009999",
+      "expect": "unallocated"
+    }
+  ],
+  "counts": {
+    "shipments": 200,
+    "purchase_orders": 201,
+    "invoices": 200,
+    "refund_entries": 170,
+    "refund_amount_cents": 206956702,
+    "shipments_not_on_refund": 26,
+    "contracts": 8
+  }
+}
