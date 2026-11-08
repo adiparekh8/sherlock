@@ -29,7 +29,7 @@ Sherlock automates.
 
 [Screen recording. Follow DEMO_PATH steps 1 to 7.]
 
-**0:40. Ledger.** This is the refund, reconciled. Sherlock read the refund notice, two hundred shipments,
+**0:40. Overview.** This is the refund, reconciled. Sherlock read the refund notice, two hundred shipments,
 their purchase orders and invoices, and ten customer contracts. Every dollar is either allocated to a
 customer with evidence, or sitting in an unallocated line with a reason, and the two always add back to the
 total. That line at the top, "conservation holds", is a hard invariant: the system refuses to force a

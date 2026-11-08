@@ -13,7 +13,7 @@ documents side by side; the outputs are an audit memo and a journal-entry CSV fo
 
 ```
 make install          # Python 3.11+
-make demo             # Postgres via docker if available, else SQLite; seeds synthetic_v1; API :8000; UI :8501
+make demo             # Postgres via docker if available, else SQLite; seeds synthetic_v1; console + API at :8000
 ```
 
 No API key, Docker or network is needed to run the demo. Model outputs are served from the committed

@@ -4,7 +4,7 @@ VENV    ?= .venv
 PY      ?= $(VENV)/bin/python
 PIP     ?= $(VENV)/bin/pip
 
-.PHONY: install synthetic seed llm-cache api ui test db-up db-down demo demo-lite clean
+.PHONY: install synthetic seed llm-cache api test db-up db-down demo demo-lite clean
 
 install:
 	python3 -m venv $(VENV)
@@ -23,11 +23,9 @@ seed:
 llm-cache:
 	$(PY) scripts/build_llm_cache.py --dataset $(DATASET)
 
+# API + console at http://localhost:8000 (the console is static files in frontend/, served by FastAPI).
 api:
 	$(VENV)/bin/uvicorn sherlock.api.app:app --host 127.0.0.1 --port 8000
-
-ui:
-	$(VENV)/bin/streamlit run ui/app.py --server.port 8501 --server.headless true
 
 test:
 	$(VENV)/bin/pytest
@@ -38,7 +36,7 @@ db-up:
 db-down:
 	docker compose down
 
-# One command: DB (docker if available, else SQLite), seed, API, UI.
+# One command: DB (docker if available, else SQLite), seed, API + console on :8000.
 demo:
 	bash scripts/demo.sh $(DATASET)
 

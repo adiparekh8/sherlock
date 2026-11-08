@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# One-command demo: database (docker Postgres if available, else SQLite), seed, API, UI.
+# One-command demo: database (docker Postgres if available, else SQLite), seed, then the API which also serves the console.
 set -euo pipefail
 DATASET="${1:-synthetic_v1}"
 cd "$(dirname "$0")/.."
@@ -20,7 +20,7 @@ else
   export DATABASE_URL="sqlite:///./sherlock.db"
 fi
 
-for PORT in 8000 8501; do
+for PORT in 8000; do
   if lsof -nP -iTCP:$PORT -sTCP:LISTEN >/dev/null 2>&1; then
     echo "Port $PORT is already in use ($(lsof -nP -iTCP:$PORT -sTCP:LISTEN | awk 'NR==2{print $1" pid "$2}'))."
     echo "Stop it (or run: kill \$(lsof -t -iTCP:$PORT)) and run make demo again."
@@ -31,15 +31,5 @@ done
 echo "== seeding $DATASET into $DATABASE_URL"
 "$PY" scripts/seed.py --dataset "$DATASET"
 
-echo "== starting API on http://127.0.0.1:8000"
-.venv/bin/uvicorn sherlock.api.app:app --host 127.0.0.1 --port 8000 --log-level warning &
-API_PID=$!
-trap 'kill $API_PID 2>/dev/null || true' EXIT
-for _ in $(seq 1 30); do
-  curl -sf http://127.0.0.1:8000/health >/dev/null 2>&1 && break
-  sleep 0.5
-done
-
-echo "== starting UI on http://localhost:8501"
-export SHERLOCK_API_URL="http://127.0.0.1:8000"
-.venv/bin/streamlit run ui/app.py --server.port 8501 --server.headless true
+echo "== Sherlock is at http://localhost:8000  (API docs at /docs). Ctrl-C to stop."
+exec .venv/bin/uvicorn sherlock.api.app:app --host 127.0.0.1 --port 8000 --log-level warning
