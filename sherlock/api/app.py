@@ -1,5 +1,7 @@
 """HTTP API. One refund is loaded at a time, so routes are unprefixed by refund id.
 
+GET  /                                      the console (frontend/index.html); /static/* serves its files
+GET  /config                                confidence threshold and demo actor for the frontend
 GET  /health
 GET  /datasets                              folders under DATA_DIR, with which one is loaded
 POST /datasets/{name}/seed                  reset + ingest + parse + normalize + match + obligations
@@ -26,7 +28,8 @@ from pathlib import Path
 from typing import Iterator
 
 from fastapi import Depends, FastAPI, HTTPException, Query
-from fastapi.responses import PlainTextResponse, Response
+from fastapi.responses import FileResponse, PlainTextResponse, Response
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -36,6 +39,7 @@ from sherlock.config import get_settings
 from sherlock.export import generate_export, generate_payables
 from sherlock.ingest import ContractError
 from sherlock.ledger import record_dict
+from sherlock.matching.config import DEFAULT_CONFIG
 from sherlock.matching.engine import live_records
 from sherlock.memo import generate_memo
 from sherlock.models import (
@@ -61,6 +65,21 @@ async def lifespan(_app: FastAPI):
 
 
 app = FastAPI(title="Sherlock", version="0.1.0", lifespan=lifespan)
+FRONTEND = Path(__file__).resolve().parents[2] / "frontend"
+app.mount("/static", StaticFiles(directory=str(FRONTEND)), name="static")
+
+
+@app.get("/", include_in_schema=False)
+def index():
+    return FileResponse(FRONTEND / "index.html")
+
+
+@app.get("/config")
+def config():
+    """What the frontend needs to render honestly: the threshold that colors confidence, and the demo actor."""
+    s = get_settings()
+    return {"auto_threshold": DEFAULT_CONFIG.auto_threshold, "demo_actor": s.sherlock_demo_actor,
+            "model": s.anthropic_model}
 
 
 def get_db() -> Iterator[Session]:

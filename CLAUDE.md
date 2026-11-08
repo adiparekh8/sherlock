@@ -18,12 +18,12 @@ the click sequence the demo follows.
 
 ```
 make install                       # python3 -m venv .venv && pip install -e ".[dev]"   (Python >= 3.11)
-make demo                          # DB (docker Postgres if present, else SQLite) + seed + API :8000 + UI :8501
+make demo                          # DB (docker Postgres if present, else SQLite) + seed + API and console on :8000
 make demo-lite                     # same, forcing SQLite
 make seed DATASET=synthetic_v1     # the dataset swap: reset DB and run the full pipeline on data/<name>/
 make synthetic                     # regenerate data/synthetic_v1 (deterministic, seed 42; includes the scanned invoice)
 make llm-cache                     # read every contract and scan with the real model; needs ANTHROPIC_API_KEY; commit llm_cache/
-make api / make ui                 # run the pieces separately
+make api                           # API + console without re-seeding
 make test                          # pytest (SQLite, no network, no key)
 .venv/bin/pytest tests/test_review.py -k override        # one test
 ```
@@ -33,7 +33,7 @@ docker-compose exposes Postgres on 5432. `ANTHROPIC_API_KEY` is optional at run 
 serves `llm_cache/` and falls back to the rule-based stub only for documents with no cached output. The demo
 must never hit the stub for synthetic_v1, so after any prompt-version bump or new document run `make llm-cache`
 with a key and commit `llm_cache/`; `tests/test_ai_coverage.py` enforces this once the cache exists.
-`SHERLOCK_DEMO_ACTOR` pre-fills the reviewer name so decision buttons are live during a demo.
+`SHERLOCK_DEMO_ACTOR` pre-fills the reviewer name in the console so decision buttons are live during a demo.
 
 ## Architecture
 
@@ -67,16 +67,20 @@ Each stage is a function `(session, dataset_dir) -> summary dict` registered in 
   stub misreads them and `tests/test_ai_coverage.py` pins both that failure and the model's correct reading.
 - **Outputs.** `memo.py` and `export.py` (journal and payables CSVs) are pure reads of the ledger and regenerate
   on every call.
-- **API** (`sherlock/api/app.py`) is unprefixed because one refund is loaded at a time. The Streamlit UI
-  (`ui/app.py`) talks only to the API. Its look comes from `.streamlit/config.toml` (theme, fonts, zero radius)
-  plus the CSS block at the top of `ui/app.py`; pages deep-link as `?page=Ledger`. Streamlit's DOM is
-  version-specific, so after a Streamlit upgrade re-check the nav radio and expander selectors there.
+- **API** (`sherlock/api/app.py`) is unprefixed because one refund is loaded at a time. It also serves the
+  console: `GET /` returns `frontend/index.html` and `/static/*` the files beside it. `GET /config` gives the
+  frontend the confidence threshold and the demo actor.
+- **Frontend** (`frontend/`): index.html + app.js + styles.css, Tailwind and marked via CDN, no build step, no
+  framework. Each page is a function in app.js (`pageOverview`, `pageLedger`, `pageReview`, `pageMemo`,
+  `pageExport`); routing is the URL hash (`#review`). Money arrives as integer cents and is formatted only by
+  `formatCents`; `toCents` parses dollar input exactly or returns null. Status colors come only from
+  `review_status` and `/config.auto_threshold`. Design tokens live in `:root` of styles.css.
 
 ## Conventions
 
 - Money is integer cents everywhere (`BigInteger`); confidence is a float and is not money. `money.split_cents`
-  does exact largest-remainder splits. Dollars exist only in `ui/app.py` (`dollars`/`to_cents`), which reject
-  anything that does not convert to cents exactly.
+  does exact largest-remainder splits. Dollars exist only in `frontend/app.js` (`formatCents`/`toCents`), which
+  reject anything that does not convert to cents exactly.
 - Branches `adi/<feature>`, merge into `main`, never commit to `main` directly. Small commits, a test per commit,
   run `make test` before committing.
 - Tests must keep covering: conservation, each planted hard case in the queue and not auto-allocated, a human
