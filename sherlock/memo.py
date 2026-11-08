@@ -111,6 +111,10 @@ def generate_memo(session: Session, now: datetime | None = None) -> str:
       "human decides; none were auto-confirmed or auto-released.")
     w("6. **Review.** Every approval, override and rejection is logged with actor, time, before/after and reason "
       "(section 4). Overrides supersede the reviewed line rather than editing it.")
+    w("7. **Outputs.** The refund is cash in. The journal-entry CSV is the close entry: the file an accounting sync "
+      "(Ramp, NetSuite, QuickBooks) would consume, labeled NOT POSTED. The payables CSV is the customer money owed "
+      "back under human-confirmed contract clauses, shaped for a bill-pay import and labeled NOT SENT. Sherlock "
+      "writes both and posts neither.")
     w("")
 
     # 3. Allocations by customer

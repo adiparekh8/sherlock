@@ -1,4 +1,8 @@
-"""Journal-entry CSV export of the reviewed ledger. Labeled as an export; nothing is posted anywhere.
+"""CSV exports of the reviewed ledger. Both are labeled as exports; Sherlock posts nothing anywhere.
+
+journal export   the close entry: the file an accounting sync (Ramp, NetSuite, QuickBooks) would consume
+payables export  the customer money owed back: one row per human-confirmed contract obligation, shaped
+                 for a bill-pay import. Pending and rejected obligations are excluded.
 
 Entries (all in integer cents, debits = credits = refund total):
   Dr 1000 Cash                                  refund total
@@ -21,6 +25,10 @@ from sherlock.matching.engine import live_records
 from sherlock.models import CandidateObligation, ObligationStatus, Refund, ReviewStatus
 
 EXPORT_LABEL = "SHERLOCK JOURNAL ENTRY EXPORT - NOT POSTED TO ANY ERP"
+PAYABLES_LABEL = "SHERLOCK PAYABLES EXPORT - NOT SENT TO ANY BILL-PAY SYSTEM"
+PAYABLES_COLUMNS = ["export_label", "generated_at_utc", "refund_id", "line_no", "customer_id", "customer_name",
+                    "amount_cents", "clause_type", "contract_file", "contract_page", "clause_excerpt", "decision_id",
+                    "decided_by", "decided_at_utc", "reason", "memo"]
 COLUMNS = ["export_label", "generated_at_utc", "refund_id", "line_no", "entry_date", "account", "account_name",
            "debit_cents", "credit_cents", "customer_id", "po_number", "invoice_number", "shipment_id",
            "ledger_line_id", "review_status", "confidence", "decision_id", "memo"]
@@ -80,6 +88,43 @@ def generate_export(session: Session, now: datetime | None = None) -> str:
     for i, row in enumerate(rows, start=1):
         row["line_no"] = i
         writer.writerow(row)
+    return buf.getvalue()
+
+
+def generate_payables(session: Session, now: datetime | None = None) -> str:
+    """One row per human-confirmed customer obligation. Regenerates from the live ledger on every call."""
+    from sherlock.models import Customer, ParsedDocument, ReviewDecision
+
+    refund = session.scalar(select(Refund))
+    buf = io.StringIO()
+    writer = csv.DictWriter(buf, fieldnames=PAYABLES_COLUMNS)
+    writer.writeheader()
+    if refund is None:
+        return buf.getvalue()
+    now = (now or datetime.now(timezone.utc)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    names = {c.customer_id: c.name for c in session.scalars(select(Customer))}
+    docs = {d.id: d for d in session.scalars(select(ParsedDocument))}
+    decisions = {d.id: d for d in session.scalars(select(ReviewDecision))}
+    obligations = session.scalars(
+        select(CandidateObligation).where(CandidateObligation.status == ObligationStatus.CONFIRMED.value)
+        .order_by(CandidateObligation.customer_id, CandidateObligation.id)).all()
+    n = 0
+    for o in obligations:
+        if not o.confirmed_amount_cents:
+            continue
+        n += 1
+        d = decisions.get(o.decided_by_decision_id)
+        doc = docs.get(o.contract_document_id)
+        writer.writerow({
+            "export_label": PAYABLES_LABEL, "generated_at_utc": now, "refund_id": refund.refund_id, "line_no": n,
+            "customer_id": o.customer_id, "customer_name": names.get(o.customer_id, ""),
+            "amount_cents": o.confirmed_amount_cents, "clause_type": o.clause_type,
+            "contract_file": doc.source_path if doc else "", "contract_page": o.page or "",
+            "clause_excerpt": " ".join(o.quoted_text.split())[:160], "decision_id": o.decided_by_decision_id or "",
+            "decided_by": d.actor if d else "", "decided_at_utc": d.created_at.strftime("%Y-%m-%dT%H:%M:%SZ") if d else "",
+            "reason": d.reason if d else "",
+            "memo": f"Tariff refund share owed to {o.customer_id} under contract clause, per decision #{o.decided_by_decision_id}",
+        })
     return buf.getvalue()
 
 

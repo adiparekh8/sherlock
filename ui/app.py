@@ -545,8 +545,12 @@ def page_memo() -> None:
 
 
 def page_export() -> None:
-    section(NUM["Export"], "Journal entries",
-            "A labeled CSV of the reviewed ledger, ready for ERP import. Sherlock posts nothing anywhere.")
+    section(NUM["Export"], "Exports",
+            "Two labeled CSVs regenerated from the reviewed ledger. Sherlock posts nothing anywhere.")
+    subhead("Journal entries", "the close entry")
+    md('<p class="lede-sm">The file an accounting sync (Ramp, NetSuite, QuickBooks) would consume: the refund as a cash '
+       'debit, one credit per allocated line with its customer, PO, invoice, review status and decision id, and the '
+       'unallocated remainder in a visible suspense account. Labeled NOT POSTED.</p>')
     text = api("GET", "/export.csv").text
     df = pd.read_csv(io.StringIO(text), dtype=str, keep_default_na=False)
     deb = df["debit_cents"].astype(int).sum()
@@ -556,7 +560,22 @@ def page_export() -> None:
     md('<div style="height:1.2rem"></div>')
     st.download_button("Download journal entries", text, file_name="sherlock_journal_export.csv", mime="text/csv")
     md('<div class="line"></div>')
-    st.dataframe(df, hide_index=True, use_container_width=True, height=520)
+    st.dataframe(df, hide_index=True, use_container_width=True, height=420)
+
+    subhead("Payables", "money owed back to customers")
+    md('<p class="lede-sm">One row per contract obligation a person confirmed: customer, amount, clause citation, '
+       'decision id and reason, shaped for a bill-pay import. Pending and rejected clauses are not in it. '
+       'Labeled NOT SENT.</p>')
+    ptext = api("GET", "/payables.csv").text
+    pdf_ = pd.read_csv(io.StringIO(ptext), dtype=str, keep_default_na=False)
+    st.download_button("Download payables", ptext, file_name="sherlock_payables_export.csv", mime="text/csv")
+    if len(pdf_):
+        total = pdf_["amount_cents"].astype(int).sum()
+        stats([(str(len(pdf_)), "Confirmed obligations", ""), (usd(total), "Owed back to customers", "")])
+        st.dataframe(pdf_, hide_index=True, use_container_width=True)
+    else:
+        md('<div class="note">No obligation has been confirmed yet. Confirm one under Review queue, Contract clauses, '
+           'and a row appears here.</div>')
 
 
 if page == "Dataset":
