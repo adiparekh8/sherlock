@@ -124,4 +124,14 @@ def _classify(para: str, page: int) -> dict:
             "reasoning": "Tariff language is present but creates neither a surcharge nor a refund obligation."}
 
 
-STUBS = {"contract_extract": contract_extract}
+def scan_extract(_input) -> dict:
+    """No OCR in the stub: an image-only page cannot be read without the model. Say so honestly."""
+    empty = {"value": "", "confidence": 0.0, "quoted_text": "", "region": ""}
+    return {"document_type": "unreadable", "invoice_number": dict(empty), "po_number": dict(empty),
+            "customer": dict(empty), "invoice_date": dict(empty), "amount_cents": dict(empty),
+            "tariff_surcharge_cents": dict(empty),
+            "notes": "No cached model output exists for this scan and no API key is configured, so the page was "
+                     "not read. Run make llm-cache with a key."}
+
+
+STUBS = {"contract_extract": contract_extract, "scan_extract": scan_extract}

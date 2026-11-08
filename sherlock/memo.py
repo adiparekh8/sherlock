@@ -251,8 +251,11 @@ def _resolution(ds: list[ReviewDecision]) -> str:
 def _what_changed(d: ReviewDecision) -> str:
     after = d.after or {}
     if d.target_type == "allocation":
+        made = "".join(f" Created invoice {i['invoice_number']} ({fmt_usd(i['amount_cents'])}, surcharge "
+                       f"{fmt_usd(i['tariff_surcharge_cents'])}) from the scanned document the model read."
+                       for i in after.get("created_invoices", []))
         if "lines" in after:
-            return f"Replaced line #{d.target_id} with {_proposal(after['lines'])} New line ids {after.get('record_ids')}."
+            return f"Replaced line #{d.target_id} with {_proposal(after['lines'])} New line ids {after.get('record_ids')}.{made}"
         if after.get("acknowledged_unallocated"):
             return "Acknowledged; stays unallocated."
         return f"Status now {after.get('review_status', '?')}."

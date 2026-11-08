@@ -40,4 +40,24 @@ class ContractExtraction(Strict):
     clauses: list[ContractClause]
 
 
-TASK_SCHEMAS: dict[str, type[BaseModel]] = {"contract_extract": ContractExtraction}
+class ScanField(Strict):
+    value: str = Field(description="Normalized value; money as integer cents with no symbols, dates as ISO, "
+                                   "empty string if not present on the page")
+    confidence: float = Field(description="0 to 1")
+    quoted_text: str = Field(description="The text on the page that supports the value, as printed")
+    region: str = Field(description="Where on the page it appears, e.g. 'top right header', 'line items table'")
+
+
+class ScanExtraction(Strict):
+    document_type: Literal["invoice", "purchase_order", "bill_of_lading", "other", "unreadable"]
+    invoice_number: ScanField
+    po_number: ScanField
+    customer: ScanField = Field(description="Customer id if printed, else the bill-to name")
+    invoice_date: ScanField
+    amount_cents: ScanField = Field(description="Total due, integer cents")
+    tariff_surcharge_cents: ScanField = Field(description="Any separately stated tariff/duty surcharge line, integer cents; "
+                                                          "'0' if none is printed")
+    notes: str = Field(description="One or two sentences on legibility and anything a reviewer should check")
+
+
+TASK_SCHEMAS: dict[str, type[BaseModel]] = {"contract_extract": ContractExtraction, "scan_extract": ScanExtraction}

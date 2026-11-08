@@ -25,3 +25,18 @@ def contract_extract_user(pages: list[dict]) -> str:
     for p in pages:
         parts.append(f"=== Page {p['page']} ===\n{p['text']}")
     return "\n\n".join(parts)
+
+
+SCAN_EXTRACT_VERSION = "v1"
+
+SCAN_EXTRACT_SYSTEM = """You are reading a scanned business document (an image with no text layer) for an importer
+reconciling a tariff refund. Read it carefully and extract the fields in the schema exactly as printed, then
+normalize: money as integer cents, dates as ISO. Quote the printed text that supports each value and say where
+on the page it sits. If a field is not on the page, return an empty value with confidence 0. If the page is not
+legible enough to read a field with confidence, say so in notes and keep that field's confidence low. Never
+invent a value. Return only the JSON object described by the schema."""
+
+
+def scan_extract_user(hint: str, source_path: str) -> str:
+    return (f"Document file: {source_path}. The person who scanned it labelled it as: {hint or 'unknown'}. "
+            f"The page image is attached. Extract the fields.")

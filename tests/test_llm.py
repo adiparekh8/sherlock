@@ -36,7 +36,7 @@ def test_cached_api_output_is_served_without_a_key(tmp_path):
     from sherlock.llm.schemas import ContractExtraction
 
     settings = Settings(anthropic_api_key=None, llm_cache_dir=tmp_path, anthropic_model="m")
-    key = _cache_key("m", "contract_extract", "v1", "sys", "u", ContractExtraction.model_json_schema())
+    key = _cache_key("m", "contract_extract", "v1", "sys", "u", ContractExtraction.model_json_schema(), [])
     (tmp_path / "contract_extract").mkdir()
     (tmp_path / "contract_extract" / f"{key}.json").write_text(json.dumps(
         {"model": "m", "source": "api", "output": {"fields": [], "clauses": []}}))

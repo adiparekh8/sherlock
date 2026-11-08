@@ -18,6 +18,7 @@ from sherlock.matching import rules
 from sherlock.matching.rules import Index, ev_entry, ev_invoice, ev_po, ev_shipment
 from sherlock.models import AllocationRecord, Invoice, PurchaseOrder, Refund, RefundEntry, ReviewStatus, Shipment
 from sherlock.money import fmt_usd, split_cents
+from sherlock.scans import scanned_invoice_candidates
 
 
 class ConservationError(AssertionError):
@@ -34,7 +35,7 @@ def build_index(session: Session) -> Index:
     for i in session.scalars(select(Invoice)):
         inv_by_po.setdefault(i.po_number, []).append(i)
     claimed = {s.po_number for s in shipments if s.po_number and s.po_number in pos}
-    return Index(by_entry, pos, inv_by_po, claimed)
+    return Index(by_entry, pos, inv_by_po, claimed, scanned_invoice_candidates(session))
 
 
 def run_matching(session: Session, dataset_dir: Path | None = None, cfg: MatchConfig = DEFAULT_CONFIG) -> dict:
@@ -110,6 +111,15 @@ def _allocate_shipment(refund, entry, shipment, amount, index, cfg, n_in_entry) 
         evidence = base_evidence + [ev_po(po)] + ([ev_invoice(im.invoice)] if im.invoice else [])
         proposal = [_line(po, im.invoice, amount)]
         if im.invoice is None:
+            scan = index.scanned_invoices.get(po.po_number)
+            if scan:
+                proposal[0]["invoice_number"] = scan["invoice_number"]
+                proposal[0]["invoice_from_scan"] = scan
+                evidence = evidence + [scan["evidence"]]
+                reasoning += (f" A scanned paper invoice ({scan['evidence']['source']}, page 1) was read by the model: "
+                              f"{scan['invoice_number']} for {po.po_number}, total {fmt_usd(scan['amount_cents'])} with "
+                              f"tariff surcharge {fmt_usd(scan['tariff_surcharge_cents'])} (field confidence "
+                              f"{scan['confidence']:.2f}). Approving creates that invoice record; it is not created automatically.")
             return AllocationRecord(**common, po_number=po.po_number, customer_id=None, confidence=conf,
                                     match_method=f"{pm.method}+{im.method}", evidence=evidence, reasoning=reasoning,
                                     review_status=ReviewStatus.UNALLOCATED.value, unallocated_reason="missing_invoice",

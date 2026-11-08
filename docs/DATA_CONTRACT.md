@@ -83,6 +83,15 @@ If the entries do not sum to `amount_cents`, the difference becomes an unallocat
 
 One PDF per customer. Text-based PDFs are read by the local stub parser; scans need the Document AI parser (optional, see `.env.example`). The manifest maps each file to a customer.
 
+## scans/ (optional)
+
+Image-only PDFs (no text layer) of documents that never made it into the CSVs: a paper invoice, a faxed
+PO. One page per document is enough. Each is listed in the manifest's `scans` array with a `hint`
+(`invoice`, `purchase_order`, `bill_of_lading`, or `other`). The page image is sent to the model, which
+returns typed fields with confidence and where on the page each was read. A scanned invoice that names a
+PO with no invoice in `invoices.csv` becomes a **proposal** on that PO's queued `missing_invoice` line. It
+becomes an `Invoice` row only when a human approves the line; the decision log records the creation.
+
 ## manifest.json
 
 ```json
@@ -92,6 +101,7 @@ One PDF per customer. Text-based PDFs are read by the local stub parser; scans n
   "files": {"refund": "refund.json", "shipments": "shipments.csv", "purchase_orders": "purchase_orders.csv",
             "invoices": "invoices.csv", "contracts_dir": "contracts"},
   "contracts": [{"file": "contracts/CUST-001_northwind.pdf", "customer_id": "CUST-001", "customer_name": "..."}],
+  "scans": [{"file": "scans/INV-240123_scan.pdf", "hint": "invoice", "pages": 1}],
   "hard_cases": [
     {"id": "split_po", "kind": "shipment_split_across_pos", "shipment_id": "...", "po_numbers": ["...", "..."], "expect": "review_queue"},
     {"id": "vague_surcharge", "kind": "vague_surcharge_clause", "customer_id": "...", "contract_file": "...", "expect": "pending_review"},
