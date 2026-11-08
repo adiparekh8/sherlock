@@ -43,11 +43,13 @@ CUSTOMERS = [
     ("CUST-006", "Bluegrass Distribution Partners"),
     ("CUST-007", "Cascade Electric Wholesale"),
     ("CUST-008", "Pioneer Fabrication Works"),
+    ("CUST-009", "Keystone Marine Supply Co."),
+    ("CUST-010", "Alder & Finch Distributors"),
 ]
-CUSTOMER_WEIGHTS = [22, 14, 16, 10, 12, 9, 11, 6]
+CUSTOMER_WEIGHTS = [22, 14, 16, 10, 12, 9, 11, 6, 9, 8]
 
 # Customers whose contracts passed the tariff through as a surcharge on invoices.
-PASSES_SURCHARGE = {"CUST-001", "CUST-002", "CUST-003", "CUST-005", "CUST-006", "CUST-007"}
+PASSES_SURCHARGE = {"CUST-001", "CUST-002", "CUST-003", "CUST-005", "CUST-006", "CUST-007", "CUST-009", "CUST-010"}
 
 SUPPLIERS = [
     "Shenzhen Brightway Manufacturing Co., Ltd.",
@@ -200,10 +202,24 @@ TARIFF_CLAUSES = {
         "term of each Order.", "ddp_no_passthrough"),
 }
 
+# Two contracts that do NOT follow the master-agreement template above. They exist to show why a
+# rule-based reader is not enough: the tariff language is buried or split, and the structure differs.
+OFF_TEMPLATE = {
+    "CUST-009": {
+        "kind": "buried_refund_obligation",
+        "expect": {"refund_owed_to_customer": "yes", "clause_type": "refund_obligation"},
+    },
+    "CUST-010": {
+        "kind": "split_refund_obligation",
+        "expect": {"refund_owed_to_customer": "yes", "clause_type": "refund_obligation"},
+    },
+}
+
 EFFECTIVE_DATES = {
     "CUST-001": date(2023, 3, 1), "CUST-002": date(2023, 7, 15), "CUST-003": date(2022, 11, 1),
     "CUST-004": date(2023, 1, 10), "CUST-005": date(2023, 9, 1), "CUST-006": date(2022, 6, 1),
-    "CUST-007": date(2023, 5, 20), "CUST-008": date(2023, 2, 14),
+    "CUST-007": date(2023, 5, 20), "CUST-008": date(2023, 2, 14), "CUST-009": date(2023, 8, 7),
+    "CUST-010": date(2024, 1, 3),
 }
 
 
@@ -245,6 +261,95 @@ def write_contract_pdf(path: Path, customer_id: str, customer_name: str) -> int:
     pdf.output(str(path))
     return pdf.pages_count
 
+
+
+
+def write_terms_sheet_pdf(path: Path, customer_name: str) -> int:
+    """CUST-009: a one-column 'Terms and Conditions of Sale' sheet with lettered sub-clauses. The refund
+    obligation sits inside a general Taxes and Duties clause and uses 'remit', not 'refund'."""
+    eff = EFFECTIVE_DATES["CUST-009"]
+    pdf = FPDF(format="letter")
+    pdf.set_auto_page_break(auto=True, margin=18)
+    pdf.set_margins(18, 18, 18)
+    pdf.add_page()
+    pdf.set_font("Helvetica", "B", 13)
+    pdf.multi_cell(0, 6, f"{IMPORTER}\nSTANDARD TERMS AND CONDITIONS OF SALE", new_x="LMARGIN", new_y="NEXT")
+    pdf.set_font("Helvetica", "", 9)
+    pdf.multi_cell(0, 4.5, f"Customer: {customer_name}    Account opened: {eff.isoformat()}    Rev. 4", new_x="LMARGIN", new_y="NEXT")
+    pdf.ln(3)
+    clauses = [
+        ("1. ACCEPTANCE.", "These terms govern every sale by Seller to Customer. Any additional or different terms in "
+         "Customer's purchase order are rejected unless expressly accepted in writing by Seller's credit department."),
+        ("2. PRICES.", "Prices are those in effect on the date of shipment unless a written quotation states otherwise. "
+         "Quotations expire thirty (30) days from issue. Seller may correct clerical errors in any quotation or invoice."),
+        ("3. PAYMENT.", "Net 30 days from invoice. Past-due balances bear a finance charge of 1.5% per month. Seller "
+         "may suspend shipments while any balance is past due."),
+        ("4. SHIPMENT.", "(a) Shipments are FOB Seller's warehouse, Tacoma, Washington. (b) Risk of loss passes to Customer "
+         "on tender to the carrier. (c) Delivery dates are estimates and Seller is not liable for delay."),
+        ("5. RETURNS.", "No returns without a return authorization number. Restocking charge 15%. Special-order items "
+         "are not returnable."),
+        ("6. WARRANTY.", "Seller passes through the manufacturer's warranty and makes no other warranty, express or "
+         "implied, including merchantability or fitness for a particular purpose."),
+        ("7. TAXES AND DUTIES.", "(a) Customer shall bear all sales, use, excise, value-added and similar taxes arising "
+         "from the sale, other than taxes on Seller's net income. (b) Customs duties and tariffs assessed on imported "
+         "goods are stated separately on Customer's invoice at Seller's actual cost and are payable with the invoice. "
+         "(c) Should Seller later receive from any governmental authority a rebate, drawback or return of duties that "
+         "were so stated on Customer's invoices, Seller shall remit the amount so received, less the direct costs of "
+         "obtaining it, to Customer within forty-five (45) days of receipt, with a statement identifying the invoices "
+         "concerned. (d) Customer shall provide resale or exemption certificates on request."),
+        ("8. LIMITATION.", "Seller's liability for any claim shall not exceed the price of the goods giving rise to the "
+         "claim. In no event is Seller liable for consequential or incidental damages."),
+        ("9. GOVERNING LAW.", "Washington law governs. Venue lies exclusively in Pierce County, Washington."),
+        ("10. ENTIRE AGREEMENT.", "These terms, the quotation and the invoice are the complete agreement."),
+    ]
+    for head, text in clauses:
+        pdf.set_font("Helvetica", "B", 9)
+        pdf.cell(0, 4.5, head, new_x="LMARGIN", new_y="NEXT")
+        pdf.set_font("Helvetica", "", 9)
+        pdf.multi_cell(0, 4.5, text, new_x="LMARGIN", new_y="NEXT")
+        pdf.ln(1.5)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    pdf.output(str(path))
+    return pdf.pages_count
+
+
+def write_letter_agreement_pdf(path: Path, customer_name: str) -> int:
+    """CUST-010: a letter agreement. The surcharge and the refund promise are two paragraphs apart, with
+    unrelated text between them, and neither uses the words 'refund' or 'shall'."""
+    eff = EFFECTIVE_DATES["CUST-010"]
+    pdf = FPDF(format="letter")
+    pdf.set_auto_page_break(auto=True, margin=22)
+    pdf.set_margins(24, 22, 24)
+    pdf.add_page()
+    pdf.set_font("Helvetica", "", 10.5)
+    paras = [
+        f"{IMPORTER}\n{IMPORTER_ADDR}\n\n{eff.strftime('%B %d, %Y')}\n\n{customer_name}\nAttn: Purchasing",
+        f"Re: Supply arrangement for the 2024 program year",
+        "Dear Purchasing Team,",
+        "This letter confirms the terms on which we will supply product to you during the program year beginning "
+        "January 1, 2024. Please countersign below and return a copy to us; your first purchase order will serve "
+        "as acceptance if we do not receive the countersigned copy.",
+        "Pricing for the program year is set out in the attached schedule and is firm for the year, except as "
+        "described in the next paragraph. Our invoices to you will show, as a separately stated line, the Section "
+        "301 duties we actually pay on the goods in each shipment, and that line is due together with the goods.",
+        "Lead times are typically six to eight weeks from receipt of order. We will hold two weeks of your "
+        "forecasted demand in our Tacoma warehouse at no charge; inventory beyond that is subject to a storage "
+        "fee of $0.40 per cubic foot per month.",
+        "Should the government later return to us any portion of the duties described above, whether through an "
+        "exclusion, a reliquidation or a drawback claim, the amount returned that relates to goods you purchased "
+        "will be credited against your next invoice, or paid to you if no invoice is outstanding, within sixty "
+        "days of our receipt of it. We will send you a statement showing how the credit was computed.",
+        "All other matters are governed by our standard terms of sale, a copy of which is attached. We value the "
+        "relationship and look forward to a strong year.",
+        "Sincerely,\n\n\n\nDana Whitfield\nChief Financial Officer\n\n\nAgreed and accepted:\n\n"
+        f"______________________\nfor {customer_name}",
+    ]
+    for ptxt in paras:
+        pdf.multi_cell(0, 5.5, ptxt, new_x="LMARGIN", new_y="NEXT")
+        pdf.ln(3)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    pdf.output(str(path))
+    return pdf.pages_count
 
 # --------------------------------------------------------------------------- generator
 
@@ -393,9 +498,18 @@ def generate(out: Path, seed: int = 42, n_shipments: int = 200) -> dict:
     for cid, cname in CUSTOMERS:
         slug = cname.split()[0].lower().replace("&", "and")
         rel = f"contracts/{cid}_{slug}.pdf"
-        pages = write_contract_pdf(out / rel, cid, cname)
-        contracts.append({"file": rel, "customer_id": cid, "customer_name": cname, "pages": pages,
-                          "clause_kind": TARIFF_CLAUSES[cid][2]})
+        if cid == "CUST-009":
+            pages = write_terms_sheet_pdf(out / rel, cname)
+        elif cid == "CUST-010":
+            pages = write_letter_agreement_pdf(out / rel, cname)
+        else:
+            pages = write_contract_pdf(out / rel, cid, cname)
+        kind = OFF_TEMPLATE[cid]["kind"] if cid in OFF_TEMPLATE else TARIFF_CLAUSES[cid][2]
+        entry = {"file": rel, "customer_id": cid, "customer_name": cname, "pages": pages, "clause_kind": kind}
+        if cid in OFF_TEMPLATE:
+            entry["off_template"] = True
+            entry["expect"] = OFF_TEMPLATE[cid]["expect"]
+        contracts.append(entry)
 
     _write_csv(out / "shipments.csv", shipments)
     _write_csv(out / "purchase_orders.csv", pos)
