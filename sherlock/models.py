@@ -143,6 +143,9 @@ class Invoice(Base):
     amount_cents: Mapped[int] = mapped_column(BigInteger, default=0)
     tariff_surcharge_cents: Mapped[int] = mapped_column(BigInteger, default=0)
     source_row: Mapped[int] = mapped_column(Integer, default=0)
+    # Set when a human created the invoice from a scanned document during review.
+    source_document_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    created_by_decision_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
 
 # --------------------------------------------------------------------------- documents

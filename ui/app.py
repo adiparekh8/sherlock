@@ -426,6 +426,25 @@ def page_queue() -> None:
                 else:
                     md('<div class="eyebrow">No proposal</div><div class="note">Approving records that this amount stays unallocated.</div>')
 
+                scan_ev = [e for e in r["evidence"] if e.get("entity") == "scan"]
+                if scan_ev:
+                    md('<div class="eyebrow" style="margin-top:1.2rem">A scanned document the model read</div>')
+                    sc1, sc2 = st.columns([1, 1], gap="large")
+                    doc = get(f"/documents/{scan_ev[0]['document_id']}")
+                    with sc1:
+                        st.image(api("GET", f"/documents/{doc['id']}/image").content,
+                                 caption=f"{doc['source_path']} · page 1 · no text layer", use_container_width=True)
+                    with sc2:
+                        md(f'<div class="note">{h(doc["source_path"])} read by the model. Approving the proposal creates this '
+                           f'invoice record; nothing is created until then.</div>')
+                        fields = [f for f in doc["fields"] if f["field_name"] != "document_type"]
+                        st.dataframe(pd.DataFrame([{"field": f["field_name"],
+                                                    "value": usd(f["value_norm"]) if f["field_name"].endswith("_cents") and str(f["value_norm"]).lstrip("-").isdigit() else f["value_norm"],
+                                                    "confidence": f"{f['confidence']:.2f}", "where on the page": f["quoted_text"]}
+                                                   for f in fields]), hide_index=True, use_container_width=True)
+                        notes = next((f["quoted_text"] for f in doc["fields"] if f["field_name"] == "document_type"), "")
+                        if notes:
+                            md(f'<div class="note">{h(notes)}</div>')
                 md('<div class="eyebrow" style="margin-top:1.2rem">The documents that disagree</div>')
                 conflicts = r["conflicts"] or r["evidence"]
                 cols = st.columns(max(1, min(len(conflicts), 3)), gap="medium")

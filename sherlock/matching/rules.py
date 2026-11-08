@@ -20,6 +20,7 @@ class Index:
     pos: dict[str, PurchaseOrder]
     invoices_by_po: dict[str, list[Invoice]]
     claimed_pos: set[str]  # PO numbers referenced by some shipment's po_number
+    scanned_invoices: dict[str, dict] = field(default_factory=dict)  # po_number -> model reading of a scan
 
 
 @dataclass

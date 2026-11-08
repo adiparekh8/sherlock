@@ -90,7 +90,7 @@ def approve_allocation(session: Session, record_id: int, actor: str, reason: str
     elif r.proposal:
         created = _replace_with_lines(session, r, r.proposal, decision, ReviewStatus.HUMAN_CONFIRMED.value,
                                       f"Approved by {actor}: {reason}")
-        decision.after = {"record_ids": [c.id for c in created], "lines": r.proposal}
+        decision.after = {**(decision.after or {}), "record_ids": [c.id for c in created], "lines": r.proposal}
     else:
         r.needs_review = False  # acknowledged: stays unallocated with its reason
         decision.after = {"record_ids": [r.id], "review_status": r.review_status, "acknowledged_unallocated": True}
@@ -111,7 +111,7 @@ def override_allocation(session: Session, record_id: int, actor: str, reason: st
     session.flush()
     created = _replace_with_lines(session, r, lines, decision, ReviewStatus.HUMAN_OVERRIDDEN.value,
                                   f"Overridden by {actor}: {reason}")
-    decision.after = {"record_ids": [c.id for c in created], "lines": lines,
+    decision.after = {**(decision.after or {}), "record_ids": [c.id for c in created], "lines": lines,
                       "changed": _diff(before, lines)}
     _finish(session, r.refund_id)
     return decision
@@ -159,24 +159,52 @@ def _validate_lines(session: Session, lines: list[dict], max_cents: int) -> list
         if not customer_id or session.get(Customer, customer_id) is None:
             raise ReviewError("each line needs a customer_id (directly or via po_number)")
         inv = session.get(Invoice, raw["invoice_number"]) if raw.get("invoice_number") else None
-        if raw.get("invoice_number") and inv is None:
+        if raw.get("invoice_number") and inv is None and not raw.get("invoice_from_scan"):
             raise ReviewError(f"unknown invoice_number {raw['invoice_number']}")
         if inv is None and po is not None:
             # Convenience: a PO with exactly one invoice implies it.
             invs = session.scalars(select(Invoice).where(Invoice.po_number == po.po_number)).all()
             inv = invs[0] if len(invs) == 1 else None
         total += amount
-        out.append({"po_number": po.po_number if po else None, "customer_id": customer_id,
-                    "invoice_number": inv.invoice_number if inv else None, "amount_cents": amount})
+        line = {"po_number": po.po_number if po else None, "customer_id": customer_id,
+                "invoice_number": inv.invoice_number if inv else raw.get("invoice_number"), "amount_cents": amount}
+        if raw.get("invoice_from_scan"):
+            line["invoice_from_scan"] = raw["invoice_from_scan"]
+        out.append(line)
     if total > max_cents:
         raise ReviewError(f"lines sum to {total} cents, more than the {max_cents} cents being reviewed")
     return out
+
+
+def _materialize_scanned_invoice(session: Session, line: dict, decision: ReviewDecision) -> Invoice | None:
+    """A proposal line may carry a model reading of a scanned invoice. Only a human decision turns it into
+    an Invoice row; this is that moment."""
+    scan = line.get("invoice_from_scan")
+    if not scan or not scan.get("invoice_number"):
+        return None
+    if session.get(Invoice, scan["invoice_number"]) is not None:
+        return None
+    from datetime import date as _date
+
+    inv = Invoice(invoice_number=scan["invoice_number"], po_number=line["po_number"], customer_id=line["customer_id"],
+                  invoice_date=_date.fromisoformat(scan["invoice_date"]) if scan.get("invoice_date") else None,
+                  amount_cents=int(scan["amount_cents"]), tariff_surcharge_cents=int(scan["tariff_surcharge_cents"]),
+                  source_row=0, source_document_id=scan.get("document_id"), created_by_decision_id=decision.id)
+    session.add(inv)
+    session.flush()
+    return inv
 
 
 def _replace_with_lines(session, r: AllocationRecord, lines: list[dict], decision: ReviewDecision,
                         status: str, note: str) -> list[AllocationRecord]:
     created = []
     for line in lines:
+        inv = _materialize_scanned_invoice(session, line, decision)
+        if inv is not None:
+            line = {**line, "invoice_number": inv.invoice_number}
+            decision.after = {**(decision.after or {}), "created_invoices": (decision.after or {}).get("created_invoices", []) + [{
+                "invoice_number": inv.invoice_number, "po_number": inv.po_number, "amount_cents": inv.amount_cents,
+                "tariff_surcharge_cents": inv.tariff_surcharge_cents, "source_document_id": inv.source_document_id}]}
         created.append(AllocationRecord(
             refund_id=r.refund_id, refund_entry_id=r.refund_entry_id, shipment_id=r.shipment_id,
             po_number=line.get("po_number"), invoice_number=line.get("invoice_number"),

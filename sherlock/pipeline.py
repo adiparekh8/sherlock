@@ -47,11 +47,13 @@ from sherlock.matching.engine import run_matching  # noqa: E402
 from sherlock.normalize import normalize_documents  # noqa: E402
 from sherlock.obligations import extract_obligations  # noqa: E402
 from sherlock.parsing.stage import parse_documents  # noqa: E402
+from sherlock.scans import extract_scans  # noqa: E402
 
 # (name, callable(session, dataset_dir) -> summary dict), in run order.
 STAGES: list[tuple[str, object]] = [
     ("parse", parse_documents),
     ("normalize", normalize_documents),
+    ("scans", extract_scans),
     ("match", run_matching),
     ("obligations", extract_obligations),
 ]

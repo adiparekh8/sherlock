@@ -28,5 +28,14 @@ def parse_documents(session: Session, dataset_dir: Path) -> dict:
             customer_id=c["customer_id"],
         ))
         count += 1
+    scans = 0
+    for sc in manifest.get("scans", []):
+        path = Path(dataset_dir) / sc["file"]
+        session.add(ParsedDocument(
+            doc_type="scan", source_path=sc["file"], sha256=sha256_of(path), parser="image",
+            page_count=int(sc.get("pages", 1)), pages=[{"page": i + 1, "text": ""} for i in range(int(sc.get("pages", 1)))],
+            customer_id=None,
+        ))
+        scans += 1
     session.flush()
-    return {"parser": parser.name, "documents": count}
+    return {"parser": parser.name, "documents": count, "scans": scans}

@@ -25,10 +25,12 @@ import csv
 import json
 import random
 from dataclasses import dataclass, asdict
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from pathlib import Path
 
+import numpy as np
 from fpdf import FPDF
+from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 IMPORTER = "Pacific Crest Imports LLC"
 IMPORTER_ADDR = "4120 Harbor Way, Suite 300, Tacoma, WA 98421"
@@ -351,6 +353,93 @@ def write_letter_agreement_pdf(path: Path, customer_name: str) -> int:
     pdf.output(str(path))
     return pdf.pages_count
 
+
+
+def write_scanned_invoice(path: Path, invoice_number: str, po: "PurchaseOrder", invoice_date: str,
+                          surcharge_cents: int, seed: int) -> dict:
+    """An image-only PDF of an invoice: rendered as a bitmap, slightly rotated, noisy, no text layer.
+    Deterministic for a given seed so the model-output cache keyed on the image bytes stays valid."""
+    W, H = 1275, 1650  # letter at 150 dpi
+    img = Image.new("L", (W, H), 255)
+    d = ImageDraw.Draw(img)
+    big = ImageFont.load_default(size=34)
+    h1 = ImageFont.load_default(size=26)
+    body = ImageFont.load_default(size=20)
+    small = ImageFont.load_default(size=16)
+    total = po.total_cents + surcharge_cents
+    d.text((90, 80), IMPORTER, font=big, fill=20)
+    d.text((90, 125), IMPORTER_ADDR, font=small, fill=60)
+    d.text((90, 150), "Tel (253) 555-0147  ·  AR dept: ar@pacificcrestimports.example", font=small, fill=60)
+    d.text((900, 80), "INVOICE", font=big, fill=20)
+    d.text((900, 130), f"No. {invoice_number}", font=h1, fill=20)
+    d.text((900, 165), f"Date  {invoice_date}", font=body, fill=20)
+    d.text((900, 195), f"Terms Net 30", font=body, fill=20)
+    d.line((90, 240, W - 90, 240), fill=120, width=2)
+    d.text((90, 265), "BILL TO", font=small, fill=90)
+    d.text((90, 290), po.customer_name, font=h1, fill=20)
+    d.text((90, 325), f"Customer no. {po.customer_id}", font=body, fill=20)
+    d.text((700, 265), "YOUR PO", font=small, fill=90)
+    d.text((700, 290), po.po_number, font=h1, fill=20)
+    d.text((700, 325), f"Ordered {po.order_date}", font=body, fill=20)
+    y = 420
+    d.rectangle((90, y, W - 90, y + 40), fill=235)
+    for x, label in ((100, "DESCRIPTION"), (720, "QTY"), (860, "UNIT PRICE"), (1060, "AMOUNT")):
+        d.text((x, y + 10), label, font=small, fill=40)
+    y += 60
+    d.text((100, y), po.description, font=body, fill=20)
+    d.text((720, y), f"{po.quantity:,}", font=body, fill=20)
+    d.text((860, y), fmt_usd(po.unit_price_cents), font=body, fill=20)
+    d.text((1060, y), fmt_usd(po.total_cents), font=body, fill=20)
+    y += 36
+    d.text((100, y), f"Country of origin: CN   HTS {po_hts(po)}", font=small, fill=90)
+    y += 50
+    d.text((100, y), "Tariff Surcharge - Section 301 duties paid on this shipment", font=body, fill=20)
+    d.text((1060, y), fmt_usd(surcharge_cents), font=body, fill=20)
+    y += 70
+    d.line((700, y, W - 90, y), fill=120, width=2)
+    y += 15
+    d.text((860, y), "Subtotal", font=body, fill=20); d.text((1060, y), fmt_usd(po.total_cents), font=body, fill=20)
+    y += 32
+    d.text((860, y), "Surcharge", font=body, fill=20); d.text((1060, y), fmt_usd(surcharge_cents), font=body, fill=20)
+    y += 32
+    d.text((860, y), "Sales tax", font=body, fill=20); d.text((1060, y), "$0.00", font=body, fill=20)
+    y += 40
+    d.rectangle((840, y - 6, W - 90, y + 36), outline=20, width=2)
+    d.text((860, y + 2), "TOTAL DUE", font=h1, fill=20); d.text((1060, y + 2), fmt_usd(total), font=h1, fill=20)
+    y += 110
+    d.text((90, y), "Remit to: Pacific Crest Imports LLC, PO Box 41118, Tacoma WA 98401. Please reference the invoice", font=small, fill=60)
+    d.text((90, y + 22), "number on your payment. Duties shown are passed through at actual cost per your supply agreement.", font=small, fill=60)
+    d.text((90, H - 120), "RECEIVED  AP  2024", font=h1, fill=110)
+    d.rectangle((80, H - 135, 420, H - 80), outline=110, width=3)
+
+    rng = np.random.default_rng(seed)
+    img = img.rotate(0.8, resample=Image.BILINEAR, fillcolor=255, expand=False)
+    arr = np.asarray(img, dtype=np.int16)
+    arr = arr + rng.normal(0, 9, arr.shape).astype(np.int16) - 6  # grain and a slightly grey background
+    img = Image.fromarray(np.clip(arr, 0, 255).astype(np.uint8), "L").filter(ImageFilter.GaussianBlur(0.6))
+    path.parent.mkdir(parents=True, exist_ok=True)
+    jpg = path.with_suffix(".jpg")
+    img.save(jpg, quality=72, optimize=True)
+    pdf = FPDF(unit="pt", format="letter")
+    pdf.set_creation_date(datetime(2024, 9, 11, 9, 0, 0))  # fixed so the file is byte-identical across runs
+    pdf.add_page()
+    pdf.image(str(jpg), x=0, y=0, w=612, h=792)
+    pdf.output(str(path))
+    jpg.unlink()
+    return {"invoice_number": invoice_number, "po_number": po.po_number, "customer_id": po.customer_id,
+            "invoice_date": invoice_date, "amount_cents": total, "tariff_surcharge_cents": surcharge_cents}
+
+
+def fmt_usd(cents: int) -> str:
+    return f"${cents // 100:,}.{cents % 100:02d}"
+
+
+def po_hts(po: "PurchaseOrder") -> str:
+    for desc, hts, _, _ in PRODUCTS:
+        if desc == po.description:
+            return hts
+    return ""
+
 # --------------------------------------------------------------------------- generator
 
 
@@ -359,6 +448,8 @@ def generate(out: Path, seed: int = 42, n_shipments: int = 200) -> dict:
     out.mkdir(parents=True, exist_ok=True)
 
     shipments: list[Shipment] = []
+    scan_truth: dict = {}
+    scan_file = ""
     pos: list[PurchaseOrder] = []
     invoices: list[Invoice] = []
     mismatches: list[dict] = []
@@ -444,7 +535,10 @@ def generate(out: Path, seed: int = 42, n_shipments: int = 200) -> dict:
         pos.append(po)
 
         if i == MISSING_INVOICE_IDX:
-            pass  # planted: never invoiced
+            # Planted: never made it into invoices.csv. A paper copy exists as an image-only scan.
+            scan_truth = write_scanned_invoice(out / "scans" / f"INV-{po_number[3:]}_scan.pdf", f"INV-{po_number[3:]}",
+                                               po, iso(arrival + timedelta(days=10)), duty, seed)
+            scan_file = f"scans/INV-{po_number[3:]}_scan.pdf"
         else:
             inv = _invoice(rng, po, arrival, duty)
             if i in INVOICE_AMOUNT_OFF:
@@ -528,8 +622,10 @@ def generate(out: Path, seed: int = 42, n_shipments: int = 200) -> dict:
             "purchase_orders": "purchase_orders.csv",
             "invoices": "invoices.csv",
             "contracts_dir": "contracts",
+            "scans_dir": "scans",
         },
         "contracts": contracts,
+        "scans": [{"file": scan_file, "hint": "invoice", "pages": 1}] if scan_file else [],
         "hard_cases": [
             {
                 "id": "split_po",
@@ -558,8 +654,11 @@ def generate(out: Path, seed: int = 42, n_shipments: int = 200) -> dict:
                 "shipment_id": f"SHP-{MISSING_INVOICE_IDX:04d}",
                 "po_number": f"PO-24{MISSING_INVOICE_IDX:04d}",
                 "expect": "review_queue",
-                "description": "Shipment and PO match cleanly but no invoice exists for the PO, so the customer "
-                               "was never billed the surcharge the refund would reverse.",
+                "description": "Shipment and PO match cleanly but no invoice exists in invoices.csv. A scanned "
+                               "paper invoice for the PO sits in scans/; only the model can read it, and only a "
+                               "human can turn it into an invoice record.",
+                "scan_file": scan_file,
+                "scan_truth": scan_truth,
             },
         ],
         "other_mismatches": mismatches,
