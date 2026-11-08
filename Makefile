@@ -4,7 +4,7 @@ VENV    ?= .venv
 PY      ?= $(VENV)/bin/python
 PIP     ?= $(VENV)/bin/pip
 
-.PHONY: install synthetic seed api ui test db-up db-down demo demo-lite clean
+.PHONY: install synthetic seed llm-cache api ui test db-up db-down demo demo-lite clean
 
 install:
 	python3 -m venv $(VENV)
@@ -18,6 +18,10 @@ synthetic:
 # The dataset swap: point this at any folder under data/ that matches docs/DATA_CONTRACT.md.
 seed:
 	$(PY) scripts/seed.py --dataset $(DATASET)
+
+# Read every contract and scan with the real model and commit the outputs. Needs ANTHROPIC_API_KEY in .env.
+llm-cache:
+	$(PY) scripts/build_llm_cache.py --dataset $(DATASET)
 
 api:
 	$(VENV)/bin/uvicorn sherlock.api.app:app --host 127.0.0.1 --port 8000

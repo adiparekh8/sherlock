@@ -66,6 +66,30 @@
       "customer_name": "Pioneer Fabrication Works",
       "pages": 2,
       "clause_kind": "ddp_no_passthrough"
+    },
+    {
+      "file": "contracts/CUST-009_keystone.pdf",
+      "customer_id": "CUST-009",
+      "customer_name": "Keystone Marine Supply Co.",
+      "pages": 1,
+      "clause_kind": "buried_refund_obligation",
+      "off_template": true,
+      "expect": {
+        "refund_owed_to_customer": "yes",
+        "clause_type": "refund_obligation"
+      }
+    },
+    {
+      "file": "contracts/CUST-010_alder.pdf",
+      "customer_id": "CUST-010",
+      "customer_name": "Alder & Finch Distributors",
+      "pages": 1,
+      "clause_kind": "split_refund_obligation",
+      "off_template": true,
+      "expect": {
+        "refund_owed_to_customer": "yes",
+        "clause_type": "refund_obligation"
+      }
     }
   ],
   "hard_cases": [
@@ -259,6 +283,6 @@
     "refund_entries": 173,
     "refund_amount_cents": 217633901,
     "shipments_not_on_refund": 23,
-    "contracts": 8
+    "contracts": 10
   }
 }

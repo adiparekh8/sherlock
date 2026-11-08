@@ -31,6 +31,8 @@ def normalize_documents(session: Session, dataset_dir: Path) -> dict:
     for doc in docs:
         result = extract_contract(doc)
         sources[result.source] = sources.get(result.source, 0) + 1
+        doc.extract_source = result.source
+        doc.extract_model = result.model
         extractor = "llm" if result.model != "stub" else "llm_stub"
         page_text = {p["page"]: p["text"] for p in doc.pages}
         for f in result.output["fields"]:
@@ -44,4 +46,5 @@ def normalize_documents(session: Session, dataset_dir: Path) -> dict:
             ))
             n_fields += 1
     session.flush()
-    return {"documents": len(docs), "fields": n_fields, "llm_sources": sources}
+    models = sorted({d.extract_model for d in docs if d.extract_model and d.extract_model != "stub"})
+    return {"documents": len(docs), "fields": n_fields, "llm_sources": sources, "models": models}

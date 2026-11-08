@@ -28,6 +28,6 @@ def test_parse_stage_stores_documents(session):
     summary = parse_documents(session, DATASET_DIR)
     session.commit()
     docs = session.scalars(select(ParsedDocument)).all()
-    assert summary["documents"] == len(docs) == 8
+    assert summary["documents"] == len(docs) == 10
     d = docs[0]
     assert d.customer_id and d.sha256 and d.pages[0]["text"]
