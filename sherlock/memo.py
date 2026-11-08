@@ -8,8 +8,6 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from sherlock import ledger
-from sherlock.config import get_settings
-from sherlock.llm import get_llm
 from sherlock.matching.config import DEFAULT_CONFIG
 from sherlock.matching.engine import live_records
 from sherlock.models import (
@@ -48,7 +46,6 @@ def generate_memo(session: Session, now: datetime | None = None) -> str:
     obligations = session.scalars(select(CandidateObligation).order_by(CandidateObligation.customer_id)).all()
     docs = {d.id: d for d in session.scalars(select(ParsedDocument))}
     cfg = DEFAULT_CONFIG
-    settings = get_settings()
 
     L: list[str] = []
     w = L.append
@@ -102,10 +99,8 @@ def generate_memo(session: Session, now: datetime | None = None) -> str:
     parser = next(iter(docs.values())).parser if docs else "n/a"
     w(f"2. **Parse.** Contracts were read with the `{parser}` parser into per-page text; clause citations below refer "
       f"to those pages.")
-    llm_desc = f"model `{settings.anthropic_model}` with cached outputs" if get_llm().has_key else \
-        "cached model outputs where present, otherwise the deterministic rule-based stub (no API key configured)"
-    w(f"3. **Normalize.** Contract fields and tariff clauses were extracted by {llm_desc}. Every extracted value keeps "
-      f"its page, character span and confidence.")
+    w(f"3. **Normalize.** {reader_sentence(list(docs.values()))} Every extracted value keeps its page, character "
+      f"span and confidence.")
     w(f"4. **Match.** Each refund entry was linked to shipments by entry number and shared by duty paid; each shipment to "
       f"a PO by PO number, else by supplier, product, quantity (tolerance {cfg.quantity_tolerance_pct:g}%) and order "
       f"date (window {cfg.po_date_window_days} days); each PO to its invoice; each invoice to its customer. "
@@ -116,6 +111,10 @@ def generate_memo(session: Session, now: datetime | None = None) -> str:
       "human decides; none were auto-confirmed or auto-released.")
     w("6. **Review.** Every approval, override and rejection is logged with actor, time, before/after and reason "
       "(section 4). Overrides supersede the reviewed line rather than editing it.")
+    w("7. **Outputs.** The refund is cash in. The journal-entry CSV is the close entry: the file an accounting sync "
+      "(Ramp, NetSuite, QuickBooks) would consume, labeled NOT POSTED. The payables CSV is the customer money owed "
+      "back under human-confirmed contract clauses, shaped for a bill-pay import and labeled NOT SENT. Sherlock "
+      "writes both and posts neither.")
     w("")
 
     # 3. Allocations by customer
@@ -220,6 +219,29 @@ def generate_memo(session: Session, now: datetime | None = None) -> str:
     return "\n".join(L)
 
 
+def reader_sentence(docs: list[ParsedDocument]) -> str:
+    """How the contracts were read: which model, from where, and whether anything fell back to the stub."""
+    contracts = [d for d in docs if d.doc_type == "contract"]
+    if not contracts:
+        return "No contracts were loaded."
+    models = sorted({d.extract_model for d in contracts if d.extract_model and d.extract_model != "stub"})
+    by_src = {}
+    for d in contracts:
+        by_src[d.extract_source or "unknown"] = by_src.get(d.extract_source or "unknown", 0) + 1
+    n = len(contracts)
+    model = " / ".join(f"`{m}`" for m in models) if models else "the model"
+    parts = []
+    if by_src.get("cache"):
+        parts.append(f"{by_src['cache']} of {n} contracts were read by {model}, served from the committed "
+                     f"model-output cache (llm_cache/)")
+    if by_src.get("api"):
+        parts.append(f"{by_src['api']} of {n} were read by {model} live during this run")
+    if by_src.get("stub"):
+        parts.append(f"{by_src['stub']} of {n} fell back to the deterministic rule-based reader because no cached "
+                     f"model output exists for them yet (run `make llm-cache` with a key to replace those readings)")
+    return "Contract fields and tariff clauses: " + "; ".join(parts) + "."
+
+
 def _proposal(lines: list[dict]) -> str:
     return "; ".join(f"{fmt_usd(l['amount_cents'])} to {l.get('customer_id') or '?'} via PO {l.get('po_number') or '?'}"
                      + (f" / {l['invoice_number']}" if l.get('invoice_number') else " (no invoice)") for l in lines) + "."
@@ -233,8 +255,11 @@ def _resolution(ds: list[ReviewDecision]) -> str:
 def _what_changed(d: ReviewDecision) -> str:
     after = d.after or {}
     if d.target_type == "allocation":
+        made = "".join(f" Created invoice {i['invoice_number']} ({fmt_usd(i['amount_cents'])}, surcharge "
+                       f"{fmt_usd(i['tariff_surcharge_cents'])}) from the scanned document the model read."
+                       for i in after.get("created_invoices", []))
         if "lines" in after:
-            return f"Replaced line #{d.target_id} with {_proposal(after['lines'])} New line ids {after.get('record_ids')}."
+            return f"Replaced line #{d.target_id} with {_proposal(after['lines'])} New line ids {after.get('record_ids')}.{made}"
         if after.get("acknowledged_unallocated"):
             return "Acknowledged; stays unallocated."
         return f"Status now {after.get('review_status', '?')}."

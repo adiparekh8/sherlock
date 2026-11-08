@@ -25,10 +25,12 @@ import csv
 import json
 import random
 from dataclasses import dataclass, asdict
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from pathlib import Path
 
+import numpy as np
 from fpdf import FPDF
+from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 IMPORTER = "Pacific Crest Imports LLC"
 IMPORTER_ADDR = "4120 Harbor Way, Suite 300, Tacoma, WA 98421"
@@ -43,11 +45,13 @@ CUSTOMERS = [
     ("CUST-006", "Bluegrass Distribution Partners"),
     ("CUST-007", "Cascade Electric Wholesale"),
     ("CUST-008", "Pioneer Fabrication Works"),
+    ("CUST-009", "Keystone Marine Supply Co."),
+    ("CUST-010", "Alder & Finch Distributors"),
 ]
-CUSTOMER_WEIGHTS = [22, 14, 16, 10, 12, 9, 11, 6]
+CUSTOMER_WEIGHTS = [22, 14, 16, 10, 12, 9, 11, 6, 9, 8]
 
 # Customers whose contracts passed the tariff through as a surcharge on invoices.
-PASSES_SURCHARGE = {"CUST-001", "CUST-002", "CUST-003", "CUST-005", "CUST-006", "CUST-007"}
+PASSES_SURCHARGE = {"CUST-001", "CUST-002", "CUST-003", "CUST-005", "CUST-006", "CUST-007", "CUST-009", "CUST-010"}
 
 SUPPLIERS = [
     "Shenzhen Brightway Manufacturing Co., Ltd.",
@@ -200,10 +204,24 @@ TARIFF_CLAUSES = {
         "term of each Order.", "ddp_no_passthrough"),
 }
 
+# Two contracts that do NOT follow the master-agreement template above. They exist to show why a
+# rule-based reader is not enough: the tariff language is buried or split, and the structure differs.
+OFF_TEMPLATE = {
+    "CUST-009": {
+        "kind": "buried_refund_obligation",
+        "expect": {"refund_owed_to_customer": "yes", "clause_type": "refund_obligation"},
+    },
+    "CUST-010": {
+        "kind": "split_refund_obligation",
+        "expect": {"refund_owed_to_customer": "yes", "clause_type": "refund_obligation"},
+    },
+}
+
 EFFECTIVE_DATES = {
     "CUST-001": date(2023, 3, 1), "CUST-002": date(2023, 7, 15), "CUST-003": date(2022, 11, 1),
     "CUST-004": date(2023, 1, 10), "CUST-005": date(2023, 9, 1), "CUST-006": date(2022, 6, 1),
-    "CUST-007": date(2023, 5, 20), "CUST-008": date(2023, 2, 14),
+    "CUST-007": date(2023, 5, 20), "CUST-008": date(2023, 2, 14), "CUST-009": date(2023, 8, 7),
+    "CUST-010": date(2024, 1, 3),
 }
 
 
@@ -246,6 +264,182 @@ def write_contract_pdf(path: Path, customer_id: str, customer_name: str) -> int:
     return pdf.pages_count
 
 
+
+
+def write_terms_sheet_pdf(path: Path, customer_name: str) -> int:
+    """CUST-009: a one-column 'Terms and Conditions of Sale' sheet with lettered sub-clauses. The refund
+    obligation sits inside a general Taxes and Duties clause and uses 'remit', not 'refund'."""
+    eff = EFFECTIVE_DATES["CUST-009"]
+    pdf = FPDF(format="letter")
+    pdf.set_auto_page_break(auto=True, margin=18)
+    pdf.set_margins(18, 18, 18)
+    pdf.add_page()
+    pdf.set_font("Helvetica", "B", 13)
+    pdf.multi_cell(0, 6, f"{IMPORTER}\nSTANDARD TERMS AND CONDITIONS OF SALE", new_x="LMARGIN", new_y="NEXT")
+    pdf.set_font("Helvetica", "", 9)
+    pdf.multi_cell(0, 4.5, f"Customer: {customer_name}    Account opened: {eff.isoformat()}    Rev. 4", new_x="LMARGIN", new_y="NEXT")
+    pdf.ln(3)
+    clauses = [
+        ("1. ACCEPTANCE.", "These terms govern every sale by Seller to Customer. Any additional or different terms in "
+         "Customer's purchase order are rejected unless expressly accepted in writing by Seller's credit department."),
+        ("2. PRICES.", "Prices are those in effect on the date of shipment unless a written quotation states otherwise. "
+         "Quotations expire thirty (30) days from issue. Seller may correct clerical errors in any quotation or invoice."),
+        ("3. PAYMENT.", "Net 30 days from invoice. Past-due balances bear a finance charge of 1.5% per month. Seller "
+         "may suspend shipments while any balance is past due."),
+        ("4. SHIPMENT.", "(a) Shipments are FOB Seller's warehouse, Tacoma, Washington. (b) Risk of loss passes to Customer "
+         "on tender to the carrier. (c) Delivery dates are estimates and Seller is not liable for delay."),
+        ("5. RETURNS.", "No returns without a return authorization number. Restocking charge 15%. Special-order items "
+         "are not returnable."),
+        ("6. WARRANTY.", "Seller passes through the manufacturer's warranty and makes no other warranty, express or "
+         "implied, including merchantability or fitness for a particular purpose."),
+        ("7. TAXES AND DUTIES.", "(a) Customer shall bear all sales, use, excise, value-added and similar taxes arising "
+         "from the sale, other than taxes on Seller's net income. (b) Customs duties and tariffs assessed on imported "
+         "goods are stated separately on Customer's invoice at Seller's actual cost and are payable with the invoice. "
+         "(c) Should Seller later receive from any governmental authority a rebate, drawback or return of duties that "
+         "were so stated on Customer's invoices, Seller shall remit the amount so received, less the direct costs of "
+         "obtaining it, to Customer within forty-five (45) days of receipt, with a statement identifying the invoices "
+         "concerned. (d) Customer shall provide resale or exemption certificates on request."),
+        ("8. LIMITATION.", "Seller's liability for any claim shall not exceed the price of the goods giving rise to the "
+         "claim. In no event is Seller liable for consequential or incidental damages."),
+        ("9. GOVERNING LAW.", "Washington law governs. Venue lies exclusively in Pierce County, Washington."),
+        ("10. ENTIRE AGREEMENT.", "These terms, the quotation and the invoice are the complete agreement."),
+    ]
+    for head, text in clauses:
+        pdf.set_font("Helvetica", "B", 9)
+        pdf.cell(0, 4.5, head, new_x="LMARGIN", new_y="NEXT")
+        pdf.set_font("Helvetica", "", 9)
+        pdf.multi_cell(0, 4.5, text, new_x="LMARGIN", new_y="NEXT")
+        pdf.ln(1.5)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    pdf.output(str(path))
+    return pdf.pages_count
+
+
+def write_letter_agreement_pdf(path: Path, customer_name: str) -> int:
+    """CUST-010: a letter agreement. The surcharge and the refund promise are two paragraphs apart, with
+    unrelated text between them, and neither uses the words 'refund' or 'shall'."""
+    eff = EFFECTIVE_DATES["CUST-010"]
+    pdf = FPDF(format="letter")
+    pdf.set_auto_page_break(auto=True, margin=22)
+    pdf.set_margins(24, 22, 24)
+    pdf.add_page()
+    pdf.set_font("Helvetica", "", 10.5)
+    paras = [
+        f"{IMPORTER}\n{IMPORTER_ADDR}\n\n{eff.strftime('%B %d, %Y')}\n\n{customer_name}\nAttn: Purchasing",
+        f"Re: Supply arrangement for the 2024 program year",
+        "Dear Purchasing Team,",
+        "This letter confirms the terms on which we will supply product to you during the program year beginning "
+        "January 1, 2024. Please countersign below and return a copy to us; your first purchase order will serve "
+        "as acceptance if we do not receive the countersigned copy.",
+        "Pricing for the program year is set out in the attached schedule and is firm for the year, except as "
+        "described in the next paragraph. Our invoices to you will show, as a separately stated line, the Section "
+        "301 duties we actually pay on the goods in each shipment, and that line is due together with the goods.",
+        "Lead times are typically six to eight weeks from receipt of order. We will hold two weeks of your "
+        "forecasted demand in our Tacoma warehouse at no charge; inventory beyond that is subject to a storage "
+        "fee of $0.40 per cubic foot per month.",
+        "Should the government later return to us any portion of the duties described above, whether through an "
+        "exclusion, a reliquidation or a drawback claim, the amount returned that relates to goods you purchased "
+        "will be credited against your next invoice, or paid to you if no invoice is outstanding, within sixty "
+        "days of our receipt of it. We will send you a statement showing how the credit was computed.",
+        "All other matters are governed by our standard terms of sale, a copy of which is attached. We value the "
+        "relationship and look forward to a strong year.",
+        "Sincerely,\n\n\n\nDana Whitfield\nChief Financial Officer\n\n\nAgreed and accepted:\n\n"
+        f"______________________\nfor {customer_name}",
+    ]
+    for ptxt in paras:
+        pdf.multi_cell(0, 5.5, ptxt, new_x="LMARGIN", new_y="NEXT")
+        pdf.ln(3)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    pdf.output(str(path))
+    return pdf.pages_count
+
+
+
+def write_scanned_invoice(path: Path, invoice_number: str, po: "PurchaseOrder", invoice_date: str,
+                          surcharge_cents: int, seed: int) -> dict:
+    """An image-only PDF of an invoice: rendered as a bitmap, slightly rotated, noisy, no text layer.
+    Deterministic for a given seed so the model-output cache keyed on the image bytes stays valid."""
+    W, H = 1275, 1650  # letter at 150 dpi
+    img = Image.new("L", (W, H), 255)
+    d = ImageDraw.Draw(img)
+    big = ImageFont.load_default(size=34)
+    h1 = ImageFont.load_default(size=26)
+    body = ImageFont.load_default(size=20)
+    small = ImageFont.load_default(size=16)
+    total = po.total_cents + surcharge_cents
+    d.text((90, 80), IMPORTER, font=big, fill=20)
+    d.text((90, 125), IMPORTER_ADDR, font=small, fill=60)
+    d.text((90, 150), "Tel (253) 555-0147  ·  AR dept: ar@pacificcrestimports.example", font=small, fill=60)
+    d.text((900, 80), "INVOICE", font=big, fill=20)
+    d.text((900, 130), f"No. {invoice_number}", font=h1, fill=20)
+    d.text((900, 165), f"Date  {invoice_date}", font=body, fill=20)
+    d.text((900, 195), f"Terms Net 30", font=body, fill=20)
+    d.line((90, 240, W - 90, 240), fill=120, width=2)
+    d.text((90, 265), "BILL TO", font=small, fill=90)
+    d.text((90, 290), po.customer_name, font=h1, fill=20)
+    d.text((90, 325), f"Customer no. {po.customer_id}", font=body, fill=20)
+    d.text((700, 265), "YOUR PO", font=small, fill=90)
+    d.text((700, 290), po.po_number, font=h1, fill=20)
+    d.text((700, 325), f"Ordered {po.order_date}", font=body, fill=20)
+    y = 420
+    d.rectangle((90, y, W - 90, y + 40), fill=235)
+    for x, label in ((100, "DESCRIPTION"), (720, "QTY"), (860, "UNIT PRICE"), (1060, "AMOUNT")):
+        d.text((x, y + 10), label, font=small, fill=40)
+    y += 60
+    d.text((100, y), po.description, font=body, fill=20)
+    d.text((720, y), f"{po.quantity:,}", font=body, fill=20)
+    d.text((860, y), fmt_usd(po.unit_price_cents), font=body, fill=20)
+    d.text((1060, y), fmt_usd(po.total_cents), font=body, fill=20)
+    y += 36
+    d.text((100, y), f"Country of origin: CN   HTS {po_hts(po)}", font=small, fill=90)
+    y += 50
+    d.text((100, y), "Tariff Surcharge - Section 301 duties paid on this shipment", font=body, fill=20)
+    d.text((1060, y), fmt_usd(surcharge_cents), font=body, fill=20)
+    y += 70
+    d.line((700, y, W - 90, y), fill=120, width=2)
+    y += 15
+    d.text((860, y), "Subtotal", font=body, fill=20); d.text((1060, y), fmt_usd(po.total_cents), font=body, fill=20)
+    y += 32
+    d.text((860, y), "Surcharge", font=body, fill=20); d.text((1060, y), fmt_usd(surcharge_cents), font=body, fill=20)
+    y += 32
+    d.text((860, y), "Sales tax", font=body, fill=20); d.text((1060, y), "$0.00", font=body, fill=20)
+    y += 40
+    d.rectangle((840, y - 6, W - 90, y + 36), outline=20, width=2)
+    d.text((860, y + 2), "TOTAL DUE", font=h1, fill=20); d.text((1060, y + 2), fmt_usd(total), font=h1, fill=20)
+    y += 110
+    d.text((90, y), "Remit to: Pacific Crest Imports LLC, PO Box 41118, Tacoma WA 98401. Please reference the invoice", font=small, fill=60)
+    d.text((90, y + 22), "number on your payment. Duties shown are passed through at actual cost per your supply agreement.", font=small, fill=60)
+    d.text((90, H - 120), "RECEIVED  AP  2024", font=h1, fill=110)
+    d.rectangle((80, H - 135, 420, H - 80), outline=110, width=3)
+
+    rng = np.random.default_rng(seed)
+    img = img.rotate(0.8, resample=Image.BILINEAR, fillcolor=255, expand=False)
+    arr = np.asarray(img, dtype=np.int16)
+    arr = arr + rng.normal(0, 9, arr.shape).astype(np.int16) - 6  # grain and a slightly grey background
+    img = Image.fromarray(np.clip(arr, 0, 255).astype(np.uint8), "L").filter(ImageFilter.GaussianBlur(0.6))
+    path.parent.mkdir(parents=True, exist_ok=True)
+    jpg = path.with_suffix(".jpg")
+    img.save(jpg, quality=72, optimize=True)
+    pdf = FPDF(unit="pt", format="letter")
+    pdf.set_creation_date(datetime(2024, 9, 11, 9, 0, 0))  # fixed so the file is byte-identical across runs
+    pdf.add_page()
+    pdf.image(str(jpg), x=0, y=0, w=612, h=792)
+    pdf.output(str(path))
+    jpg.unlink()
+    return {"invoice_number": invoice_number, "po_number": po.po_number, "customer_id": po.customer_id,
+            "invoice_date": invoice_date, "amount_cents": total, "tariff_surcharge_cents": surcharge_cents}
+
+
+def fmt_usd(cents: int) -> str:
+    return f"${cents // 100:,}.{cents % 100:02d}"
+
+
+def po_hts(po: "PurchaseOrder") -> str:
+    for desc, hts, _, _ in PRODUCTS:
+        if desc == po.description:
+            return hts
+    return ""
+
 # --------------------------------------------------------------------------- generator
 
 
@@ -254,6 +448,8 @@ def generate(out: Path, seed: int = 42, n_shipments: int = 200) -> dict:
     out.mkdir(parents=True, exist_ok=True)
 
     shipments: list[Shipment] = []
+    scan_truth: dict = {}
+    scan_file = ""
     pos: list[PurchaseOrder] = []
     invoices: list[Invoice] = []
     mismatches: list[dict] = []
@@ -339,7 +535,10 @@ def generate(out: Path, seed: int = 42, n_shipments: int = 200) -> dict:
         pos.append(po)
 
         if i == MISSING_INVOICE_IDX:
-            pass  # planted: never invoiced
+            # Planted: never made it into invoices.csv. A paper copy exists as an image-only scan.
+            scan_truth = write_scanned_invoice(out / "scans" / f"INV-{po_number[3:]}_scan.pdf", f"INV-{po_number[3:]}",
+                                               po, iso(arrival + timedelta(days=10)), duty, seed)
+            scan_file = f"scans/INV-{po_number[3:]}_scan.pdf"
         else:
             inv = _invoice(rng, po, arrival, duty)
             if i in INVOICE_AMOUNT_OFF:
@@ -393,9 +592,18 @@ def generate(out: Path, seed: int = 42, n_shipments: int = 200) -> dict:
     for cid, cname in CUSTOMERS:
         slug = cname.split()[0].lower().replace("&", "and")
         rel = f"contracts/{cid}_{slug}.pdf"
-        pages = write_contract_pdf(out / rel, cid, cname)
-        contracts.append({"file": rel, "customer_id": cid, "customer_name": cname, "pages": pages,
-                          "clause_kind": TARIFF_CLAUSES[cid][2]})
+        if cid == "CUST-009":
+            pages = write_terms_sheet_pdf(out / rel, cname)
+        elif cid == "CUST-010":
+            pages = write_letter_agreement_pdf(out / rel, cname)
+        else:
+            pages = write_contract_pdf(out / rel, cid, cname)
+        kind = OFF_TEMPLATE[cid]["kind"] if cid in OFF_TEMPLATE else TARIFF_CLAUSES[cid][2]
+        entry = {"file": rel, "customer_id": cid, "customer_name": cname, "pages": pages, "clause_kind": kind}
+        if cid in OFF_TEMPLATE:
+            entry["off_template"] = True
+            entry["expect"] = OFF_TEMPLATE[cid]["expect"]
+        contracts.append(entry)
 
     _write_csv(out / "shipments.csv", shipments)
     _write_csv(out / "purchase_orders.csv", pos)
@@ -414,8 +622,10 @@ def generate(out: Path, seed: int = 42, n_shipments: int = 200) -> dict:
             "purchase_orders": "purchase_orders.csv",
             "invoices": "invoices.csv",
             "contracts_dir": "contracts",
+            "scans_dir": "scans",
         },
         "contracts": contracts,
+        "scans": [{"file": scan_file, "hint": "invoice", "pages": 1}] if scan_file else [],
         "hard_cases": [
             {
                 "id": "split_po",
@@ -444,8 +654,11 @@ def generate(out: Path, seed: int = 42, n_shipments: int = 200) -> dict:
                 "shipment_id": f"SHP-{MISSING_INVOICE_IDX:04d}",
                 "po_number": f"PO-24{MISSING_INVOICE_IDX:04d}",
                 "expect": "review_queue",
-                "description": "Shipment and PO match cleanly but no invoice exists for the PO, so the customer "
-                               "was never billed the surcharge the refund would reverse.",
+                "description": "Shipment and PO match cleanly but no invoice exists in invoices.csv. A scanned "
+                               "paper invoice for the PO sits in scans/; only the model can read it, and only a "
+                               "human can turn it into an invoice record.",
+                "scan_file": scan_file,
+                "scan_truth": scan_truth,
             },
         ],
         "other_mismatches": mismatches,

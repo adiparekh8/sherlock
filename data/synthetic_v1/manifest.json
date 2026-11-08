@@ -8,7 +8,8 @@
     "shipments": "shipments.csv",
     "purchase_orders": "purchase_orders.csv",
     "invoices": "invoices.csv",
-    "contracts_dir": "contracts"
+    "contracts_dir": "contracts",
+    "scans_dir": "scans"
   },
   "contracts": [
     {
@@ -66,6 +67,37 @@
       "customer_name": "Pioneer Fabrication Works",
       "pages": 2,
       "clause_kind": "ddp_no_passthrough"
+    },
+    {
+      "file": "contracts/CUST-009_keystone.pdf",
+      "customer_id": "CUST-009",
+      "customer_name": "Keystone Marine Supply Co.",
+      "pages": 1,
+      "clause_kind": "buried_refund_obligation",
+      "off_template": true,
+      "expect": {
+        "refund_owed_to_customer": "yes",
+        "clause_type": "refund_obligation"
+      }
+    },
+    {
+      "file": "contracts/CUST-010_alder.pdf",
+      "customer_id": "CUST-010",
+      "customer_name": "Alder & Finch Distributors",
+      "pages": 1,
+      "clause_kind": "split_refund_obligation",
+      "off_template": true,
+      "expect": {
+        "refund_owed_to_customer": "yes",
+        "clause_type": "refund_obligation"
+      }
+    }
+  ],
+  "scans": [
+    {
+      "file": "scans/INV-240123_scan.pdf",
+      "hint": "invoice",
+      "pages": 1
     }
   ],
   "hard_cases": [
@@ -96,7 +128,16 @@
       "shipment_id": "SHP-0123",
       "po_number": "PO-240123",
       "expect": "review_queue",
-      "description": "Shipment and PO match cleanly but no invoice exists for the PO, so the customer was never billed the surcharge the refund would reverse."
+      "description": "Shipment and PO match cleanly but no invoice exists in invoices.csv. A scanned paper invoice for the PO sits in scans/; only the model can read it, and only a human can turn it into an invoice record.",
+      "scan_file": "scans/INV-240123_scan.pdf",
+      "scan_truth": {
+        "invoice_number": "INV-240123",
+        "po_number": "PO-240123",
+        "customer_id": "CUST-006",
+        "invoice_date": "2024-09-11",
+        "amount_cents": 7503607,
+        "tariff_surcharge_cents": 1210387
+      }
     }
   ],
   "other_mismatches": [
@@ -259,6 +300,6 @@
     "refund_entries": 173,
     "refund_amount_cents": 217633901,
     "shipments_not_on_refund": 23,
-    "contracts": 8
+    "contracts": 10
   }
 }

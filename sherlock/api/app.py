@@ -12,7 +12,8 @@ GET  /obligations
 POST /review/obligations/{id}/{approve|override|reject}
 GET  /decisions
 GET  /memo                                  text/markdown
-GET  /export.csv                            text/csv (attachment)
+GET  /export.csv                            journal entries, text/csv (attachment)
+GET  /payables.csv                          human-confirmed customer obligations, text/csv (attachment)
 GET  /documents/{id}                        parsed document pages
 GET  /manifest                              dataset manifest (planted cases panel)
 """
@@ -21,6 +22,7 @@ from __future__ import annotations
 
 import json
 from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import Iterator
 
 from fastapi import Depends, FastAPI, HTTPException, Query
@@ -31,7 +33,7 @@ from sqlalchemy.orm import Session
 
 from sherlock import db, ledger, review
 from sherlock.config import get_settings
-from sherlock.export import generate_export
+from sherlock.export import generate_export, generate_payables
 from sherlock.ingest import ContractError
 from sherlock.ledger import record_dict
 from sherlock.matching.engine import live_records
@@ -282,6 +284,25 @@ def get_export(session: Session = Depends(get_db)):
     r = _refund(session)
     return Response(generate_export(session), media_type="text/csv",
                     headers={"Content-Disposition": f'attachment; filename="sherlock_journal_export_{r.refund_id}.csv"'})
+
+
+@app.get("/payables.csv")
+def get_payables(session: Session = Depends(get_db)):
+    r = _refund(session)
+    return Response(generate_payables(session), media_type="text/csv",
+                    headers={"Content-Disposition": f'attachment; filename="sherlock_payables_export_{r.refund_id}.csv"'})
+
+
+@app.get("/documents/{doc_id}/image")
+def get_document_image(doc_id: int, session: Session = Depends(get_db)):
+    """First page of a scanned document as PNG, for the review queue."""
+    d = session.get(ParsedDocument, doc_id)
+    if d is None or d.doc_type != "scan":
+        raise HTTPException(404, "no such scanned document")
+    ds = session.scalar(select(Dataset))
+    from sherlock.scans import page_image_png
+
+    return Response(page_image_png(Path(ds.path), d.source_path), media_type="image/png")
 
 
 @app.get("/documents/{doc_id}")

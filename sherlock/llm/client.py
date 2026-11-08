@@ -10,6 +10,7 @@ Determinism for the demo:
 
 from __future__ import annotations
 
+import base64
 import hashlib
 import json
 from dataclasses import dataclass
@@ -45,19 +46,27 @@ class LLMClient:
     def has_key(self) -> bool:
         return bool(self.settings.anthropic_api_key)
 
-    def complete_json(self, task: str, prompt_version: str, system: str, user: str, stub_input: Any = None) -> LLMResult:
+    def cache_path(self, task: str, prompt_version: str, system: str, user: str, images: list[bytes] | None = None) -> Path:
+        schema = TASK_SCHEMAS[task].model_json_schema()
+        key = _cache_key(self.settings.anthropic_model, task, prompt_version, system, user, schema, images or [])
+        return self.cache_dir / task / f"{key}.json"
+
+    def complete_json(self, task: str, prompt_version: str, system: str, user: str, stub_input: Any = None,
+                      images: list[bytes] | None = None) -> LLMResult:
+        """images: PNG bytes attached to the user turn (vision). They are part of the cache key."""
         schema_model = TASK_SCHEMAS[task]
         schema = schema_model.model_json_schema()
         model = self.settings.anthropic_model
-        key = _cache_key(model, task, prompt_version, system, user, schema)
-        path = self.cache_dir / task / f"{key}.json"
+        images = images or []
+        path = self.cache_path(task, prompt_version, system, user, images)
+        key = path.stem
 
         cached = _read(path)
         if cached:
             return LLMResult(schema_model.model_validate(cached["output"]).model_dump(), "cache", key, cached["model"])
 
         if self.has_key:
-            output = schema_model.model_validate(self._call_api(model, system, user, schema)).model_dump()
+            output = schema_model.model_validate(self._call_api(model, system, user, schema, images)).model_dump()
             _write(path, {"task": task, "prompt_version": prompt_version, "model": model, "source": "api",
                           "created_at": datetime.now(timezone.utc).isoformat(), "output": output})
             return LLMResult(output, "api", key, model)
@@ -67,16 +76,22 @@ class LLMClient:
             return LLMResult(output, "stub", key, "stub")
         raise CacheMiss(f"no ANTHROPIC_API_KEY and no cached result for {task}/{key}")
 
-    def _call_api(self, model: str, system: str, user: str, schema: dict) -> dict:
+    def _call_api(self, model: str, system: str, user: str, schema: dict, images: list[bytes]) -> dict:
         import anthropic
 
         if self._client is None:
             self._client = anthropic.Anthropic(api_key=self.settings.anthropic_api_key)
+        content: list[dict] = [
+            {"type": "image", "source": {"type": "base64", "media_type": "image/png",
+                                         "data": base64.standard_b64encode(img).decode("ascii")}}
+            for img in images
+        ]
+        content.append({"type": "text", "text": user})
         response = self._client.beta.messages.create(
             model=model,
             max_tokens=16000,
             system=system,
-            messages=[{"role": "user", "content": user}],
+            messages=[{"role": "user", "content": content}],
             output_config={"format": {"type": "json_schema", "schema": schema}},
             betas=["server-side-fallback-2026-07-01"],
             fallbacks="default",
@@ -87,9 +102,9 @@ class LLMClient:
         return json.loads(text)
 
 
-def _cache_key(model: str, task: str, version: str, system: str, user: str, schema: dict) -> str:
+def _cache_key(model: str, task: str, version: str, system: str, user: str, schema: dict, images: list[bytes]) -> str:
     payload = json.dumps({"model": model, "task": task, "version": version, "system": system, "user": user,
-                          "schema": schema}, sort_keys=True)
+                          "schema": schema, "images": [hashlib.sha256(i).hexdigest() for i in images]}, sort_keys=True)
     return hashlib.sha256(payload.encode()).hexdigest()[:32]
 
 

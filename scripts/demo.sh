@@ -20,6 +20,14 @@ else
   export DATABASE_URL="sqlite:///./sherlock.db"
 fi
 
+for PORT in 8000 8501; do
+  if lsof -nP -iTCP:$PORT -sTCP:LISTEN >/dev/null 2>&1; then
+    echo "Port $PORT is already in use ($(lsof -nP -iTCP:$PORT -sTCP:LISTEN | awk 'NR==2{print $1" pid "$2}'))."
+    echo "Stop it (or run: kill \$(lsof -t -iTCP:$PORT)) and run make demo again."
+    exit 1
+  fi
+done
+
 echo "== seeding $DATASET into $DATABASE_URL"
 "$PY" scripts/seed.py --dataset "$DATASET"
 

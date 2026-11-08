@@ -143,6 +143,9 @@ class Invoice(Base):
     amount_cents: Mapped[int] = mapped_column(BigInteger, default=0)
     tariff_surcharge_cents: Mapped[int] = mapped_column(BigInteger, default=0)
     source_row: Mapped[int] = mapped_column(Integer, default=0)
+    # Set when a human created the invoice from a scanned document during review.
+    source_document_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    created_by_decision_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
 
 # --------------------------------------------------------------------------- documents
@@ -162,6 +165,8 @@ class ParsedDocument(Base):
     pages: Mapped[list] = mapped_column(JSON, default=list)  # [{"page": 1, "text": "..."}]
     customer_id: Mapped[str | None] = mapped_column(ForeignKey("customers.customer_id"), nullable=True)
     parsed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    extract_source: Mapped[str] = mapped_column(String(20), default="")  # api | cache | stub, set by normalization
+    extract_model: Mapped[str] = mapped_column(String(100), default="")  # model id, or "stub"
 
     fields: Mapped[list["ExtractedField"]] = relationship(back_populates="document", cascade="all, delete-orphan")
 
