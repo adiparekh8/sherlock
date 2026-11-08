@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sherlock</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script>tailwind.config = { corePlugins: { preflight: false } }</script>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div id="progress"></div>
+<div class="shell">
+  <aside class="sidebar">
+    <div class="wordmark"><i class="mark"></i><span>Sherlock</span></div>
+    <div class="dataset">
+      <label for="dataset">Dataset</label>
+      <select id="dataset"></select>
+    </div>
+    <nav class="nav" id="nav"></nav>
+    <div class="foot" id="foot"></div>
+  </aside>
+  <div>
+    <header class="topbar" id="topbar"></header>
+    <main id="main"></main>
+  </div>
+</div>
+<script src="app.js"></script>
+</body>
+</html>
