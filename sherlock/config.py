@@ -22,6 +22,7 @@ class Settings(BaseSettings):
     docai_processor_name: str | None = None
 
     sherlock_api_url: str = "http://127.0.0.1:8000"
+    sherlock_demo_actor: str = ""  # pre-fills the reviewer name in the UI so decision buttons are live
 
     @property
     def docai_enabled(self) -> bool:

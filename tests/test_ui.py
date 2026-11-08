@@ -45,7 +45,7 @@ def api_url(engine, monkeypatch):
     get_settings.cache_clear()
 
 
-PAGES = ["Dataset", "Ledger", "Review queue", "Contracts", "Memo", "Export"]
+PAGES = ["Ledger", "Review queue", "Contracts", "Memo", "Export", "Dataset"]
 
 
 def test_every_page_renders_without_exception(api_url):
