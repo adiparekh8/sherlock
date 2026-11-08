@@ -15,6 +15,11 @@ import requests
 import streamlit as st
 
 API = os.environ.get("SHERLOCK_API_URL", "http://127.0.0.1:8000").rstrip("/")
+DEMO_ACTOR = os.environ.get("SHERLOCK_DEMO_ACTOR", "")
+if not DEMO_ACTOR and os.path.exists(".env"):
+    for _line in open(".env"):
+        if _line.strip().startswith("SHERLOCK_DEMO_ACTOR="):
+            DEMO_ACTOR = _line.split("=", 1)[1].strip().strip("'\"")
 
 st.set_page_config(page_title="Sherlock", page_icon="◇", layout="wide", initial_sidebar_state="collapsed")
 
@@ -126,6 +131,26 @@ def usd(cents) -> str:
     return f"{sign}${abs(cents) // 100:,}.{abs(cents) % 100:02d}"
 
 
+def dollars(cents) -> str:
+    """Integer cents -> 'dddd.cc' for an input box. The only place money becomes a decimal string."""
+    cents = int(cents)
+    sign = "-" if cents < 0 else ""
+    return f"{sign}{abs(cents) // 100}.{abs(cents) % 100:02d}"
+
+
+def to_cents(text: str):
+    """'5285.23' -> 528523. Returns None unless the text rounds exactly to cents (no floats involved)."""
+    from decimal import Decimal, InvalidOperation
+
+    try:
+        d = Decimal(str(text).replace("$", "").replace(",", "").strip())
+    except InvalidOperation:
+        return None
+    if d != d.quantize(Decimal("0.01")):
+        return None
+    return int(d * 100)
+
+
 def h(s) -> str:
     return html.escape("" if s is None else str(s))
 
@@ -218,7 +243,7 @@ def _s(v):
 
 # --------------------------------------------------------------------------- nav
 
-PAGES = ["Dataset", "Ledger", "Review queue", "Contracts", "Memo", "Export"]
+PAGES = ["Ledger", "Review queue", "Contracts", "Memo", "Export", "Dataset"]
 NUM = {p: f"{i + 1:02d}" for i, p in enumerate(PAGES)}
 
 nav_l, nav_r = st.columns([1, 3])
@@ -243,9 +268,13 @@ summary = get("/refund")["summary"] if loaded["loaded"] else None
 
 
 def conservation_items(s: dict) -> list[tuple[str, str, str]]:
+    auto = s["by_status"].get("auto_proposed", {}).get("cents", 0)
+    human = (s["by_status"].get("human_confirmed", {}).get("cents", 0)
+             + s["by_status"].get("human_overridden", {}).get("cents", 0))
     return [
         (usd(s["refund_cents"]), "Refund received", ""),
-        (usd(s["allocated_cents"]), "Allocated with evidence", ""),
+        (usd(auto), "Auto-proposed with evidence", ""),
+        (usd(human), "Human-confirmed or overridden", "ok" if human else ""),
         (usd(s["unallocated_cents"]), "Unallocated, each with a reason", "warn" if s["unallocated_cents"] else ""),
         ("Holds" if s["conserved"] else "Broken", "Conservation: refund = allocated + unallocated", "ok" if s["conserved"] else "bad"),
         (str(s["queue_count"]), "Lines waiting for a human", "warn" if s["queue_count"] else "ok"),
@@ -298,6 +327,16 @@ def page_dataset() -> None:
     if st.session_state.get("seed_report"):
         with st.expander("What the load did"):
             st.json(st.session_state["seed_report"])
+    if loaded["loaded"]:
+        subhead("Rehearsal", "one click back to the start")
+        if st.button("Reset demo: re-seed the loaded dataset and clear every decision"):
+            with st.spinner("Resetting..."):
+                try:
+                    post(f"/datasets/{loaded['loaded']}/seed")
+                    st.session_state.pop("seed_report", None)
+                    st.rerun()
+                except RuntimeError as e:
+                    st.error(str(e))
 
     if loaded["loaded"]:
         m = get("/manifest")
@@ -400,7 +439,7 @@ def page_queue() -> None:
             "is counted as allocated until a person decides.")
     c1, c2 = st.columns([1, 2])
     st.session_state["actor"] = c1.text_input("Your name, logged with every decision",
-                                              value=st.session_state.get("actor", ""))
+                                              value=st.session_state.get("actor", DEMO_ACTOR))
     with c2:
         stats([(str(len(q["allocations"])), "Allocation lines waiting", "warn" if q["allocations"] else "ok"),
                (str(len(q["obligations"])), "Contract clauses waiting", "warn" if q["obligations"] else "ok")])
@@ -465,18 +504,31 @@ def page_queue() -> None:
                 md('<div class="eyebrow" style="margin-top:1.2rem">Or write your own lines</div>')
                 seed_lines = r["proposal"] or [{"po_number": r["po_number"], "customer_id": r["customer_id"],
                                                 "invoice_number": r["invoice_number"], "amount_cents": r["amount_cents"]}]
-                edited = st.data_editor(pd.DataFrame(seed_lines, columns=["po_number", "customer_id", "invoice_number", "amount_cents"]),
-                                        num_rows="dynamic", key=f"ed{r['id']}", use_container_width=True)
-                md(f'<div class="note">Lines may total at most {usd(r["amount_cents"])}, in integer cents. Any remainder '
-                   f'stays unallocated as override_remainder. A PO with one invoice fills the invoice in for you.</div>')
+                seed_rows = [{"po_number": l.get("po_number") or "", "customer_id": l.get("customer_id") or "",
+                              "invoice_number": l.get("invoice_number") or "", "amount_usd": dollars(l["amount_cents"])}
+                             for l in seed_lines]
+                edited = st.data_editor(pd.DataFrame(seed_rows, columns=["po_number", "customer_id", "invoice_number", "amount_usd"]),
+                                        num_rows="dynamic", key=f"ed{r['id']}", use_container_width=True,
+                                        column_config={"amount_usd": st.column_config.TextColumn("amount (USD)", help="dollars.cents, e.g. 5285.23")})
+                md(f'<div class="note">Lines may total at most {usd(r["amount_cents"])}. Amounts are dollars with two '
+                   f'decimals and are converted to integer cents on submit. Any remainder stays unallocated as '
+                   f'override_remainder. A PO with one invoice fills the invoice in for you.</div>')
                 if st.button("Override with these lines", key=f"ov{r['id']}", disabled=not ready):
-                    lines = []
+                    lines, problems = [], []
                     for _, row in edited.iterrows():
-                        if pd.isna(row.get("amount_cents")):
+                        raw_amt = _s(row.get("amount_usd"))
+                        if raw_amt is None:
+                            continue
+                        cents = to_cents(raw_amt)
+                        if cents is None:
+                            problems.append(f"'{raw_amt}' is not a dollar amount with at most two decimals")
                             continue
                         lines.append({"po_number": _s(row.get("po_number")), "customer_id": _s(row.get("customer_id")),
-                                      "invoice_number": _s(row.get("invoice_number")), "amount_cents": int(row["amount_cents"])})
-                    act(f"/review/allocations/{r['id']}/override", {"actor": actor, "reason": reason, "lines": lines})
+                                      "invoice_number": _s(row.get("invoice_number")), "amount_cents": cents})
+                    if problems:
+                        st.error("; ".join(problems))
+                    else:
+                        act(f"/review/allocations/{r['id']}/override", {"actor": actor, "reason": reason, "lines": lines})
 
     with tab_o:
         if not q["obligations"]:
@@ -582,7 +634,7 @@ if page == "Dataset":
     page_dataset()
 elif not loaded["loaded"]:
     section(NUM[page], page)
-    md('<div class="note">No dataset loaded. Open Dataset and load one.</div>')
+    md('<div class="note">No dataset loaded. Open the Dataset page (last in the nav) and load one.</div>')
 elif page == "Ledger":
     page_ledger()
 elif page == "Review queue":
