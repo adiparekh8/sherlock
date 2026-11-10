@@ -6,6 +6,7 @@ const PAGES = [
   ["documents", "Documents", "M6 3h8l4 4v14H6z M14 3v5h5 M9 13h6 M9 17h6"],
   ["overview", "Overview", "M3 3h18v18H3z M3 9h18 M9 21V9"],
   ["ledger", "Ledger", "M4 5h16 M4 12h16 M4 19h10"],
+  ["timeline", "Timeline", "M5 5h14 M5 12h9 M5 19h14 M8 5v14"],
   ["memo", "TODO", "M6 3h9l5 5v13H6z M14 3v6h6 M9 13h6 M9 17h6"],
   ["export", "Export", "M12 3v12 M7 10l5 5 5-5 M4 19h16"],
 ];
@@ -369,6 +370,55 @@ async function pageIntake() {
     <div class="tree-list">${S.uploads.map(uploadTree).join("") || note("No active documents. New uploads appear here and across the workspace.")}</div>`;
 }
 
+function timelineDate(text) {
+  const source = String(text || "");
+  const iso = source.match(/\b(20\d{2})[-/](\d{1,2})[-/](\d{1,2})\b/);
+  const month = source.match(/\b(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\s+\d{1,2}(?:,)?\s+20\d{2}\b/i);
+  const value = iso ? `${iso[1]}-${iso[2].padStart(2, "0")}-${iso[3].padStart(2, "0")}` : month?.[0];
+  if (!value) return null;
+  const parsed = Date.parse(value);
+  return Number.isNaN(parsed) ? null : { sort: parsed, label: new Date(parsed).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) };
+}
+
+function timelineLabel(record) {
+  return ({ shipment: "Shipment documented", invoice: "Invoice recorded", refund: "Refund recorded", credit_memo: "Credit memo recorded", purchase_order: "Purchase order recorded", statement: "Statement recorded", contract: "Contract evidence recorded", claim: "Claim recorded" }[record.record_type] || "Supporting record recorded");
+}
+
+function timelineGroups(uploads) {
+  const groups = [];
+  for (const upload of uploads) {
+    const records = upload.analysis?.records || [];
+    const shipments = records.filter(r => r.record_type === "shipment");
+    const anchors = shipments.length ? shipments : [{ reference: "Packet timeline", origin: "", destination: "", page: 1 }];
+    anchors.forEach((shipment, index) => {
+      const ref = shipment.reference || `Packet timeline ${index + 1}`;
+      const related = records.filter(record => record === shipment || shipments.length === 1 || (record.related_references || []).includes(ref));
+      const events = related.map((record, eventIndex) => {
+        const date = timelineDate(record.evidence);
+        return { record, date, eventIndex };
+      }).sort((a, b) => (a.date?.sort ?? Number.MAX_SAFE_INTEGER) - (b.date?.sort ?? Number.MAX_SAFE_INTEGER) || (a.record.page || 0) - (b.record.page || 0) || a.eventIndex - b.eventIndex);
+      groups.push({ upload, shipment, ref, events });
+    });
+  }
+  return groups;
+}
+
+async function pageTimeline() {
+  if (!S.workspaceId) return `${eyebrow("Timeline")}<h1>Choose a document set first</h1><a class="btn primary" href="#documents">Back to desktop</a>`;
+  if (!S.uploads.length) return `${eyebrow("Timeline")}<h1>No shipments yet</h1>${note("Upload a PDF or ZIP to build a shipment timeline.")}`;
+  const set = S.documentSets.find(x => x.id === S.workspaceId);
+  const groups = timelineGroups(S.uploads);
+  const cards = groups.map(group => {
+    const s = group.shipment;
+    const events = group.events.map(({ record, date }) => {
+      const refs = (record.related_references || []).filter(Boolean).slice(0, 5).map(ref => `<span>${esc(ref)}</span>`).join("");
+      return `<article class="timeline-event"><div class="timeline-marker"></div><div class="timeline-event-content"><div class="timeline-meta"><span>${date ? esc(date.label) : `Source page ${esc(record.page || "?")}`}</span><span>p.${esc(record.page || "?")}</span></div><h3>${esc(timelineLabel(record))}${record.reference ? ` · ${esc(record.reference)}` : ""}</h3><p>${esc(record.evidence || "No supporting text was returned.")}</p><div class="timeline-detail">${record.amount_cents !== null && record.amount_cents !== undefined ? `<b>${formatCents(record.amount_cents)}</b>` : ""}${record.direction && record.direction !== "unknown" ? `<span>${esc(record.direction.replace("money_", ""))}</span>` : ""}${refs}</div></div></article>`;
+    }).join("");
+    return `<section class="timeline-card"><div class="timeline-card-head"><div><span class="timeline-file">${esc(group.upload.filename)}</span><h2>${esc(group.ref)}</h2><p>${s.origin && s.destination ? `From <b>${esc(s.origin)}</b> to <b>${esc(s.destination)}</b>` : "Shipment location not fully identified"}</p></div><span class="pill">${group.events.length} events</span></div><div class="timeline">${events || note("No extracted events for this shipment.")}</div></section>`;
+  }).join("");
+  return `${eyebrow(`Timeline · ${set?.name || "document set"}`)}<div class="page-head"><div><h1>Shipment timeline</h1><p class="lede">A chronological story for each shipment or parcel in this document set.</p></div></div><p class="timeline-note">Dates come from printed document evidence. When a date is not printed, Sherlock uses source-PDF order and labels the event by page.</p><div class="timeline-groups">${cards}</div>`;
+}
+
 async function pageHistory() {
   const result = await get("/uploads?scope=history");
   S.history = result.uploads || [];
@@ -645,7 +695,7 @@ async function pageExport() {
 
 // --------------------------------------------------------------------------- router + events
 
-const RENDER = { documents: pageDocuments, workspace: pageWorkspace, intake: pageIntake, overview: pageOverview, ledger: pageLedger, memo: pageMemo, export: pageExport };
+const RENDER = { documents: pageDocuments, workspace: pageWorkspace, intake: pageIntake, overview: pageOverview, ledger: pageLedger, timeline: pageTimeline, memo: pageMemo, export: pageExport };
 
 async function render() {
   const main = document.getElementById("main");
