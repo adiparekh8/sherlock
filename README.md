@@ -16,8 +16,10 @@ make install          # Python 3.11+
 make demo             # Postgres via docker if available, else SQLite; seeds synthetic_v1; console + API at :8000
 ```
 
-No API key, Docker or network is needed to run the demo. Model outputs are served from the committed
-`llm_cache/`; with `ANTHROPIC_API_KEY` in `.env`, `make llm-cache` refreshes them.
+The matching demo runs locally without an API key or Docker. Contract and scan extraction uses model
+outputs when `llm_cache/` is populated; otherwise it falls back to a rule-based reader. The synthetic dataset cache was generated with
+`ANTHROPIC_MODEL=claude-haiku-5-5`; set that model in `.env` to reuse these results. To regenerate, set
+`ANTHROPIC_API_KEY` in `.env`, run `make llm-cache`, then reload the data and run the AI coverage tests. The UI loads fonts and libraries from CDNs.
 
 ![Review queue](docs/images/review_queue.png)
 

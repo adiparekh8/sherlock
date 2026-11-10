@@ -1,0 +1,64 @@
+{
+  "created_at": "2026-11-09T18:36:59.259357+00:00",
+  "model": "claude-haiku-5-5",
+  "output": {
+    "clauses": [
+      {
+        "clause_type": "surcharge_passthrough",
+        "confidence": 0.6,
+        "obligation_strength": "none",
+        "page": 2,
+        "quoted_text": "Seller reserves the right to apply a tariff surcharge to invoices for products subject to additional import duties, in an amount not to exceed the duties actually paid. The surcharge will be shown as a separate line on the invoice.",
+        "reasoning": "Section 4 permits Seller to bill a tariff surcharge capped at duties paid, but says nothing about refunds of duties. No text requires Seller to pass a refund to Buyer, and none states that no refund is owed, so the refund question is unresolved on the face of the contract.",
+        "refund_owed_to_customer": "unclear"
+      }
+    ],
+    "fields": [
+      {
+        "confidence": 0.98,
+        "name": "buyer_name",
+        "page": 1,
+        "quoted_text": "Bluegrass Distribution Partners (\"Buyer\")",
+        "value": "Bluegrass Distribution Partners"
+      },
+      {
+        "confidence": 0.98,
+        "name": "seller_name",
+        "page": 1,
+        "quoted_text": "Pacific Crest Imports LLC, a Washington limited liability company with offices at 4120 Harbor Way, Suite 300, Tacoma, WA 98421 (\"Seller\")",
+        "value": "Pacific Crest Imports LLC"
+      },
+      {
+        "confidence": 0.98,
+        "name": "effective_date",
+        "page": 1,
+        "quoted_text": "entered into as of June 01, 2022 (the \"Effective Date\")",
+        "value": "2022-06-01"
+      },
+      {
+        "confidence": 0.97,
+        "name": "governing_law",
+        "page": 2,
+        "quoted_text": "This Agreement is governed by the laws of the State of Washington without regard to its conflict of laws rules.",
+        "value": "Washington"
+      },
+      {
+        "confidence": 0.97,
+        "name": "payment_terms_days",
+        "page": 2,
+        "quoted_text": "Buyer shall pay each invoice in full within thirty (30) days of the invoice date.",
+        "value": "30"
+      },
+      {
+        "confidence": 0.97,
+        "name": "tariff_clause_heading",
+        "page": 2,
+        "quoted_text": "4. Surcharges",
+        "value": "Surcharges"
+      }
+    ]
+  },
+  "prompt_version": "v1",
+  "source": "api",
+  "task": "contract_extract"
+}

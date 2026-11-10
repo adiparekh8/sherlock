@@ -1,0 +1,64 @@
+{
+  "created_at": "2026-11-09T18:36:31.305371+00:00",
+  "model": "claude-haiku-5-5",
+  "output": {
+    "clauses": [
+      {
+        "clause_type": "no_refund_obligation",
+        "confidence": 0.97,
+        "obligation_strength": "clear",
+        "page": 2,
+        "quoted_text": "Any subsequent reduction, exclusion, drawback, or refund of such duties shall be for Seller's account and retained by Seller, and Buyer waives any claim to such amounts.",
+        "reasoning": "The clause states that any refund of duties is for Seller's account and retained by Seller, and that Buyer waives any claim to such amounts. This expressly denies any refund obligation to the Buyer.",
+        "refund_owed_to_customer": "no"
+      }
+    ],
+    "fields": [
+      {
+        "confidence": 0.98,
+        "name": "buyer_name",
+        "page": 1,
+        "quoted_text": "Ridgeline Outfitters Inc. (\"Buyer\")",
+        "value": "Ridgeline Outfitters Inc."
+      },
+      {
+        "confidence": 0.98,
+        "name": "seller_name",
+        "page": 1,
+        "quoted_text": "Pacific Crest Imports LLC, a Washington limited liability company",
+        "value": "Pacific Crest Imports LLC"
+      },
+      {
+        "confidence": 0.98,
+        "name": "effective_date",
+        "page": 1,
+        "quoted_text": "entered into as of July 15, 2023 (the \"Effective Date\")",
+        "value": "2023-07-15"
+      },
+      {
+        "confidence": 0.98,
+        "name": "governing_law",
+        "page": 2,
+        "quoted_text": "This Agreement is governed by the laws of the State of Washington without regard to its conflict of laws rules.",
+        "value": "Washington"
+      },
+      {
+        "confidence": 0.98,
+        "name": "payment_terms_days",
+        "page": 2,
+        "quoted_text": "Buyer shall pay each invoice in full within thirty (30) days of the invoice date.",
+        "value": "30"
+      },
+      {
+        "confidence": 0.98,
+        "name": "tariff_clause_heading",
+        "page": 2,
+        "quoted_text": "4. Tariff Surcharge",
+        "value": "Tariff Surcharge"
+      }
+    ]
+  },
+  "prompt_version": "v1",
+  "source": "api",
+  "task": "contract_extract"
+}

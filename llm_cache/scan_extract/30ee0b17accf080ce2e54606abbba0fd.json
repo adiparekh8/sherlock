@@ -1,0 +1,47 @@
+{
+  "created_at": "2026-11-09T18:37:54.944591+00:00",
+  "model": "claude-haiku-5-5",
+  "output": {
+    "amount_cents": {
+      "confidence": 0.94,
+      "quoted_text": "TOTAL DUE $75,036.07",
+      "region": "bottom right totals box",
+      "value": "7503607"
+    },
+    "customer": {
+      "confidence": 0.93,
+      "quoted_text": "Customer no. CUST-006",
+      "region": "upper left, under BILL TO Bluegrass Distribution Partners",
+      "value": "CUST-006"
+    },
+    "document_type": "invoice",
+    "invoice_date": {
+      "confidence": 0.95,
+      "quoted_text": "Date 2024-09-11",
+      "region": "top right header",
+      "value": "2024-09-11"
+    },
+    "invoice_number": {
+      "confidence": 0.97,
+      "quoted_text": "No. INV-240123",
+      "region": "top right header",
+      "value": "INV-240123"
+    },
+    "notes": "Scan is clear and all key fields are legible. The total $75,036.07 slightly overlaps the box border, but it reconciles with subtotal $62,932.20 plus surcharge $12,103.87 and sales tax $0.00. Reviewer should confirm the Section 301 surcharge against the duty paperwork, since it is the amount relevant to the refund.",
+    "po_number": {
+      "confidence": 0.95,
+      "quoted_text": "PO-240123",
+      "region": "upper right, under YOUR PO label",
+      "value": "PO-240123"
+    },
+    "tariff_surcharge_cents": {
+      "confidence": 0.94,
+      "quoted_text": "Tariff Surcharge - Section 301 duties paid on this shipment $12,103.87",
+      "region": "line items table, second row, and Surcharge line in totals block",
+      "value": "1210387"
+    }
+  },
+  "prompt_version": "v1",
+  "source": "api",
+  "task": "scan_extract"
+}

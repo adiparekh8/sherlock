@@ -1,0 +1,64 @@
+{
+  "created_at": "2026-11-09T18:37:12.248814+00:00",
+  "model": "claude-haiku-5-5",
+  "output": {
+    "clauses": [
+      {
+        "clause_type": "no_refund_obligation",
+        "confidence": 0.85,
+        "obligation_strength": "clear",
+        "page": 2,
+        "quoted_text": "All prices are delivered duty paid (DDP) to Buyer's designated facility and are inclusive of all customs duties, tariffs, brokerage, and import fees. Seller bears the risk of any change in such charges for the term of each Order.",
+        "reasoning": "Prices are DDP and inclusive of all customs duties and tariffs, so Buyer did not bear the tariff. The clause states no refund obligation to Buyer, and the text does not provide for passing any refund to Buyer.",
+        "refund_owed_to_customer": "no"
+      }
+    ],
+    "fields": [
+      {
+        "confidence": 0.95,
+        "name": "buyer_name",
+        "page": 1,
+        "quoted_text": "Pioneer Fabrication Works (\"Buyer\").",
+        "value": "Pioneer Fabrication Works"
+      },
+      {
+        "confidence": 0.97,
+        "name": "seller_name",
+        "page": 1,
+        "quoted_text": "Pacific Crest Imports LLC, a Washington limited liability company with offices at 4120 Harbor Way, Suite 300, Tacoma, WA 98421 (\"Seller\")",
+        "value": "Pacific Crest Imports LLC"
+      },
+      {
+        "confidence": 0.97,
+        "name": "effective_date",
+        "page": 1,
+        "quoted_text": "entered into as of February 14, 2023 (the \"Effective Date\")",
+        "value": "2023-02-14"
+      },
+      {
+        "confidence": 0.96,
+        "name": "governing_law",
+        "page": 2,
+        "quoted_text": "This Agreement is governed by the laws of the State of Washington without regard to its conflict of laws rules.",
+        "value": "Washington"
+      },
+      {
+        "confidence": 0.97,
+        "name": "payment_terms_days",
+        "page": 2,
+        "quoted_text": "Buyer shall pay each invoice in full within thirty (30) days of the invoice date.",
+        "value": "30"
+      },
+      {
+        "confidence": 0.95,
+        "name": "tariff_clause_heading",
+        "page": 2,
+        "quoted_text": "4. Delivered Pricing",
+        "value": "Delivered Pricing"
+      }
+    ]
+  },
+  "prompt_version": "v1",
+  "source": "api",
+  "task": "contract_extract"
+}

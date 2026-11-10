@@ -5,31 +5,33 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Sherlock</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
 <script src="https://cdn.tailwindcss.com"></script>
 <script>tailwind.config = { corePlugins: { preflight: false } }</script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@6.17.0/dist/maplibre-gl.css">
 <link rel="stylesheet" href="/static/styles.css">
 </head>
 <body>
 <div id="progress"></div>
+<div class="loading-screen" id="loading-screen" aria-live="polite" aria-hidden="true"><div class="mouse-orbit" id="mouse-orbit"></div><div class="loading-copy"><span>SHERLOCK / ANALYZING</span><b>Tracing the flow</b><small>Reading documents and joining the evidence.</small><a href="https://skiper-ui.com/v1/skiper61" target="_blank" rel="noreferrer">Motion pattern: Skiper UI</a></div></div>
 <div class="shell">
   <aside class="sidebar">
     <div class="wordmark"><i class="mark"></i><span>Sherlock</span></div>
-    <div class="dataset">
+    <div class="dataset dataset-seed">
       <label for="dataset">Dataset</label>
       <select id="dataset"></select>
     </div>
-    <nav class="nav" id="nav"></nav>
+    <nav class="nav" id="nav" aria-label="Main navigation"></nav>
     <div class="dataset reviewer">
       <label for="reviewer">Reviewer</label>
-      <input id="reviewer" placeholder="your name, logged with every decision" autocomplete="off">
+      <input id="reviewer" placeholder="Your name" autocomplete="off">
     </div>
     <div class="foot" id="foot"></div>
   </aside>
   <div>
     <header class="topbar" id="topbar"></header>
-    <main id="main"><div class="empty">loading...</div></main>
+    <main id="main"><div class="empty">Loading…</div></main>
   </div>
 </div>
 <script src="/static/app.js"></script>

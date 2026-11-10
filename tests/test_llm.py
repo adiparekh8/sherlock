@@ -67,3 +67,13 @@ def test_normalize_stage_writes_fields_with_spans(session):
     assert fields["buyer_name"].value_norm == "Harbor & Vale Supply LLC"
     gl = fields["governing_law"]
     assert gl.span_start is not None and doc.pages[gl.page - 1]["text"][gl.span_start:gl.span_end] == gl.quoted_text
+
+
+def test_evidence_span_matches_the_whole_quote():
+    from sherlock.llm.spans import locate_span
+
+    source = "Seller must return\nall tariff refunds to the buyer."
+    quote = "Seller must return all tariff refunds to the buyer."
+    span = locate_span(source, quote)
+    assert span == (0, len(source))
+    assert locate_span(source, "Seller must return all tariff refunds to the seller.") is None
