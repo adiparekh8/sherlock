@@ -26,7 +26,7 @@ def _reason(record: dict, fallback: str) -> str:
     return str(record.get("evidence") or fallback or "Evidence needs review in the source PDF.")
 
 
-def _email(task: str, recipient: str, reason: str, amount_usd: float | str) -> tuple[str, str]:
+def _email(task: str, recipient: str, reason: str, amount_usd: float | str, source_file: str, page: int) -> tuple[str, str]:
     subject = task
     amount = f"EUR {amount_usd:,.2f}" if isinstance(amount_usd, (int, float)) and amount_usd else "the amount shown in the packet"
     if task.startswith("Communication"):
@@ -36,7 +36,8 @@ def _email(task: str, recipient: str, reason: str, amount_usd: float | str) -> t
     else:
         ask = "Could you please send the missing document or detail, or let us know where we can retrieve it?"
     body = (f"Hi {recipient},\n\nWe’re following up on this item from our document review:\n\n"
-            f"{task}\n\nEvidence noted in the packet: {reason}\n\n{ask}\n\n"
+            f"{task}\n\nEvidence / warrant for this request:\n{reason}\n"
+            f"Source: {source_file}, page {page}\n\n{ask}\n\n"
             "Thanks,\n[Your name]")
     return subject, body
 
@@ -48,6 +49,7 @@ def build_todos(uploads: list[dict]) -> list[dict]:
         analysis = upload.get("analysis") or {}
         records = analysis.get("records") or []
         summary = str(analysis.get("summary") or "")
+        source_file = upload.get("filename", "uploaded PDF")
         party = _party(records)
         refund_records = [r for r in records if re.search(r"refund|refund notice", _reason(r, summary), re.I)]
         if refund_records or re.search(r"refund", summary, re.I):
@@ -55,11 +57,12 @@ def build_todos(uploads: list[dict]) -> list[dict]:
             task = f"Communication to {party} regarding refund"
             reason = _reason(evidence, summary)
             amount_usd = (evidence.get("amount_cents") or 0) / 100
-            subject, body = _email(task, party, reason, amount_usd)
+            page = evidence.get("page") or 1
+            subject, body = _email(task, party, reason, amount_usd, source_file, page)
             todos.append({
                 "task": task, "recipient": party, "email_subject": subject, "email_body": body, "reason": reason,
-                "source_file": upload.get("filename", "uploaded PDF"),
-                "page": evidence.get("page") or 1,
+                "source_file": source_file,
+                "page": page,
                 "amount_usd": amount_usd,
                 "status": "Open",
             })
@@ -69,21 +72,22 @@ def build_todos(uploads: list[dict]) -> list[dict]:
                 task = f"Confirm payment to {recipient}"
                 reason = _reason(record, summary)
                 amount_usd = (record.get("amount_cents") or 0) / 100
-                subject, body = _email(task, str(recipient), reason, amount_usd)
+                page = record.get("page") or 1
+                subject, body = _email(task, str(recipient), reason, amount_usd, source_file, page)
                 todos.append({
                     "task": task, "recipient": recipient, "email_subject": subject, "email_body": body, "reason": reason,
-                    "source_file": upload.get("filename", "uploaded PDF"),
-                    "page": record.get("page") or 1,
+                    "source_file": source_file,
+                    "page": page,
                     "amount_usd": amount_usd,
                     "status": "Open",
                 })
         for missing in analysis.get("missing_links") or []:
             task = f"Request evidence from {party}"
             reason = str(missing)
-            subject, body = _email(task, party, reason, "")
+            subject, body = _email(task, party, reason, "", source_file, 1)
             todos.append({
                 "task": task, "recipient": party, "email_subject": subject, "email_body": body, "reason": reason,
-                "source_file": upload.get("filename", "uploaded PDF"),
+                "source_file": source_file,
                 "page": 1,
                 "amount_usd": "",
                 "status": "Open",
