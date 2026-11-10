@@ -6,12 +6,15 @@ import io
 import re
 import textwrap
 import zipfile
+from decimal import Decimal, ROUND_HALF_UP
+from functools import lru_cache
 from html import escape
 
 from fpdf import FPDF
+import requests
 
 
-TODO_COLUMNS = ["task", "recipient", "email_subject", "email_body", "reason", "source_file", "page", "amount_usd", "status"]
+TODO_COLUMNS = ["task", "recipient", "email_subject", "email_body", "reason", "source_file", "page", "currency", "amount_original", "amount_usd", "fx_rate", "fx_rate_date", "status"]
 
 
 def _party(records: list[dict]) -> str:
@@ -26,9 +29,46 @@ def _reason(record: dict, fallback: str) -> str:
     return str(record.get("evidence") or fallback or "Evidence needs review in the source PDF.")
 
 
-def _email(task: str, recipient: str, reason: str, amount_usd: float | str, source_file: str, page: int) -> tuple[str, str]:
+def _currency(record: dict, fallback: str) -> str:
+    text = f"{record.get('evidence', '')} {fallback}".upper()
+    for marker, code in (("EUR", "EUR"), ("€", "EUR"), ("GBP", "GBP"), ("£", "GBP"), ("CAD", "CAD"), ("AUD", "AUD"), ("JPY", "JPY"), ("¥", "JPY"), ("USD", "USD"), ("$", "USD")):
+        if marker in text:
+            return code
+    return "USD"
+
+
+@lru_cache(maxsize=32)
+def _fx_rate_to_usd(currency: str) -> tuple[Decimal | None, str]:
+    if currency == "USD":
+        return Decimal("1"), ""
+    try:
+        response = requests.get(f"https://api.frankfurter.dev/v2/rate/{currency}/USD", timeout=5)
+        response.raise_for_status()
+        data = response.json()
+        return Decimal(str(data["rate"])), str(data.get("date", ""))
+    except (requests.RequestException, KeyError, TypeError, ValueError):
+        return None, ""
+
+
+def _money(amount_cents: int | None, currency: str) -> dict:
+    if amount_cents is None:
+        return {"currency": currency, "amount_original": "", "amount_usd": "", "fx_rate": "", "fx_rate_date": ""}
+    original = (Decimal(amount_cents) / Decimal(100)).quantize(Decimal("0.01"))
+    rate, rate_date = _fx_rate_to_usd(currency)
+    converted = (original * rate).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP) if rate is not None else None
+    return {"currency": currency, "amount_original": float(original), "amount_usd": float(converted) if converted is not None else "", "fx_rate": float(rate) if rate is not None else "", "fx_rate_date": rate_date}
+
+
+def _amount_phrase(money: dict) -> str:
+    original = f"{money['currency']} {money['amount_original']:,.2f}" if money.get("amount_original") != "" else "the amount shown in the packet"
+    if money.get("currency") == "USD" or money.get("amount_usd") == "":
+        return original if money.get("amount_usd") != "" else f"{original}; USD conversion unavailable"
+    return f"{original} (approximately USD ${money['amount_usd']:,.2f} at {money['fx_rate']} on {money['fx_rate_date']})"
+
+
+def _email(task: str, recipient: str, reason: str, money: dict, source_file: str, page: int) -> tuple[str, str]:
     subject = task
-    amount = f"EUR {amount_usd:,.2f}" if isinstance(amount_usd, (int, float)) and amount_usd else "the amount shown in the packet"
+    amount = _amount_phrase(money)
     if task.startswith("Communication"):
         ask = f"Please confirm the status of the refund or credit for {amount}, and let us know if any action is still needed from our team."
     elif task.startswith("Confirm payment"):
@@ -56,14 +96,14 @@ def build_todos(uploads: list[dict]) -> list[dict]:
             evidence = refund_records[0] if refund_records else {"page": 1, "evidence": summary}
             task = f"Communication to {party} regarding refund"
             reason = _reason(evidence, summary)
-            amount_usd = (evidence.get("amount_cents") or 0) / 100
+            money = _money(evidence.get("amount_cents"), _currency(evidence, summary))
             page = evidence.get("page") or 1
-            subject, body = _email(task, party, reason, amount_usd, source_file, page)
+            subject, body = _email(task, party, reason, money, source_file, page)
             todos.append({
                 "task": task, "recipient": party, "email_subject": subject, "email_body": body, "reason": reason,
                 "source_file": source_file,
                 "page": page,
-                "amount_usd": amount_usd,
+                **money,
                 "status": "Open",
             })
         for record in records:
@@ -71,20 +111,20 @@ def build_todos(uploads: list[dict]) -> list[dict]:
                 recipient = record.get("counterparty") or party
                 task = f"Confirm payment to {recipient}"
                 reason = _reason(record, summary)
-                amount_usd = (record.get("amount_cents") or 0) / 100
+                money = _money(record.get("amount_cents"), _currency(record, summary))
                 page = record.get("page") or 1
-                subject, body = _email(task, str(recipient), reason, amount_usd, source_file, page)
+                subject, body = _email(task, str(recipient), reason, money, source_file, page)
                 todos.append({
                     "task": task, "recipient": recipient, "email_subject": subject, "email_body": body, "reason": reason,
                     "source_file": source_file,
                     "page": page,
-                    "amount_usd": amount_usd,
+                    **money,
                     "status": "Open",
                 })
         for missing in analysis.get("missing_links") or []:
             task = f"Request evidence from {party}"
             reason = str(missing)
-            subject, body = _email(task, party, reason, "", source_file, 1)
+            subject, body = _email(task, party, reason, _money(None, "USD"), source_file, 1)
             todos.append({
                 "task": task, "recipient": party, "email_subject": subject, "email_body": body, "reason": reason,
                 "source_file": source_file,
