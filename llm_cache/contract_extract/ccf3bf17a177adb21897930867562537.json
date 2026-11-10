@@ -1,0 +1,73 @@
+{
+  "created_at": "2026-11-09T18:36:25.930970+00:00",
+  "model": "claude-haiku-5-5",
+  "output": {
+    "clauses": [
+      {
+        "clause_type": "surcharge_passthrough",
+        "confidence": 0.85,
+        "obligation_strength": "none",
+        "page": 2,
+        "quoted_text": "Prices under this Agreement exclude customs duties and tariffs. Seller shall itemize on each invoice, as a separate line designated \"Tariff Surcharge\", the actual duties paid by Seller on the products in that shipment, and Buyer shall pay such surcharge together with the invoice.",
+        "reasoning": "This sentence bills the actual duties to Buyer as a Tariff Surcharge but says nothing about refunds of those duties. The refund obligation appears in the following sentence, so no refund entitlement is stated here.",
+        "refund_owed_to_customer": "unclear"
+      },
+      {
+        "clause_type": "refund_obligation",
+        "confidence": 0.96,
+        "obligation_strength": "clear",
+        "page": 2,
+        "quoted_text": "If Seller subsequently receives a refund, drawback, or other recovery of any duty that was invoiced to Buyer as a Tariff Surcharge, Seller shall pass through to Buyer the full amount of such refund attributable to Buyer's purchases, by credit memo or payment, within thirty (30) days of Seller's receipt of the refund.",
+        "reasoning": "Seller must pass through to Buyer the full refund attributable to Buyer's purchases of duties invoiced as a Tariff Surcharge, within 30 days of receipt. The language is mandatory (\"shall\") and unconditional apart from the refund being attributable to Buyer's purchases.",
+        "refund_owed_to_customer": "yes"
+      }
+    ],
+    "fields": [
+      {
+        "confidence": 0.98,
+        "name": "buyer_name",
+        "page": 1,
+        "quoted_text": "Northwind Hardware Co. (\"Buyer\")",
+        "value": "Northwind Hardware Co."
+      },
+      {
+        "confidence": 0.98,
+        "name": "seller_name",
+        "page": 1,
+        "quoted_text": "Pacific Crest Imports LLC, a Washington limited liability company with offices at 4120 Harbor Way, Suite 300, Tacoma, WA 98421 (\"Seller\")",
+        "value": "Pacific Crest Imports LLC"
+      },
+      {
+        "confidence": 0.98,
+        "name": "effective_date",
+        "page": 1,
+        "quoted_text": "entered into as of March 01, 2023 (the \"Effective Date\")",
+        "value": "2023-03-01"
+      },
+      {
+        "confidence": 0.97,
+        "name": "governing_law",
+        "page": 2,
+        "quoted_text": "This Agreement is governed by the laws of the State of Washington without regard to its conflict of laws rules.",
+        "value": "Washington"
+      },
+      {
+        "confidence": 0.97,
+        "name": "payment_terms_days",
+        "page": 2,
+        "quoted_text": "Buyer shall pay each invoice in full within thirty (30) days of the invoice date.",
+        "value": "30"
+      },
+      {
+        "confidence": 0.97,
+        "name": "tariff_clause_heading",
+        "page": 2,
+        "quoted_text": "4. Duties, Tariffs, and Refunds",
+        "value": "Duties, Tariffs, and Refunds"
+      }
+    ]
+  },
+  "prompt_version": "v1",
+  "source": "api",
+  "task": "contract_extract"
+}

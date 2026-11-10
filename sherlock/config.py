@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     anthropic_api_key: str | None = None
     anthropic_model: str = "claude-opus-5-5"
     llm_cache_dir: Path = Path("llm_cache")
+    uploaded_documents_dir: Path = Path(".sherlock/uploads")
 
     google_application_credentials: str | None = None
     docai_processor_name: str | None = None

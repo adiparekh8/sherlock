@@ -1,0 +1,64 @@
+{
+  "created_at": "2026-11-09T18:36:44.187964+00:00",
+  "model": "claude-haiku-5-5",
+  "output": {
+    "clauses": [
+      {
+        "clause_type": "no_tariff_clause",
+        "confidence": 0.9,
+        "obligation_strength": "none",
+        "page": 2,
+        "quoted_text": "Buyer is responsible for all sales, use, and excise taxes arising from its purchases. Unit prices stated in each Order are firm for the term of the Order.",
+        "reasoning": "Section 4 (Taxes) allocates sales, use, and excise taxes to the Buyer but does not mention tariffs, duties, surcharges, or refunds. Nothing in the agreement requires any refund of tariffs to the Buyer.",
+        "refund_owed_to_customer": "no"
+      }
+    ],
+    "fields": [
+      {
+        "confidence": 0.95,
+        "name": "buyer_name",
+        "page": 1,
+        "quoted_text": "Meridian Building Products (\"Buyer\")",
+        "value": "Meridian Building Products"
+      },
+      {
+        "confidence": 0.97,
+        "name": "seller_name",
+        "page": 1,
+        "quoted_text": "Pacific Crest Imports LLC, a Washington limited liability company",
+        "value": "Pacific Crest Imports LLC"
+      },
+      {
+        "confidence": 0.97,
+        "name": "effective_date",
+        "page": 1,
+        "quoted_text": "entered into as of January 10, 2023 (the \"Effective Date\")",
+        "value": "2023-01-10"
+      },
+      {
+        "confidence": 0.97,
+        "name": "governing_law",
+        "page": 2,
+        "quoted_text": "This Agreement is governed by the laws of the State of Washington without regard to its conflict of laws rules.",
+        "value": "Washington"
+      },
+      {
+        "confidence": 0.96,
+        "name": "payment_terms_days",
+        "page": 2,
+        "quoted_text": "Buyer shall pay each invoice in full within thirty (30) days of the invoice date.",
+        "value": "30"
+      },
+      {
+        "confidence": 0.9,
+        "name": "tariff_clause_heading",
+        "page": 2,
+        "quoted_text": "",
+        "value": ""
+      }
+    ]
+  },
+  "prompt_version": "v1",
+  "source": "api",
+  "task": "contract_extract"
+}

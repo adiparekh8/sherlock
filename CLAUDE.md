@@ -87,3 +87,7 @@ Each stage is a function `(session, dataset_dir) -> summary dict` registered in 
   override flowing into ledger + memo + export with the decision logged, and memo/CSV regeneration.
 - Never commit keys. Keep `.env.example` current.
 - End each session with a three-line status: done, blocked, next.
+
+## Repository ownership
+
+All changes belong to `notskiing/sherlock`. Never push to or modify `adiparekh8/sherlock` unless the user explicitly grants permission for that action. Upstream may be read or fetched to sync the fork.

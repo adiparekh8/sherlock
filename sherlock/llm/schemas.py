@@ -60,4 +60,27 @@ class ScanExtraction(Strict):
     notes: str = Field(description="One or two sentences on legibility and anything a reviewer should check")
 
 
-TASK_SCHEMAS: dict[str, type[BaseModel]] = {"contract_extract": ContractExtraction, "scan_extract": ScanExtraction}
+class PacketRecord(Strict):
+    record_type: Literal["refund", "invoice", "credit_memo", "claim", "purchase_order", "shipment", "contract", "statement", "other"]
+    reference: str = Field(description="Document or transaction number, or an empty string if none is printed")
+    counterparty: str = Field(description="Named payer, payee, vendor, customer, or an empty string")
+    amount_cents: int | None = Field(description="Printed amount in integer cents, or null when no amount is printed")
+    direction: Literal["money_in", "money_out", "unknown"]
+    page: int = Field(description="1-based page containing the evidence")
+    evidence: str = Field(description="Short printed text supporting this record; do not invent information")
+    related_references: list[str] = Field(description="Other printed identifiers that link this record to another record")
+    origin: str = Field(description="Printed shipment origin, city, port, or country; empty string if absent")
+    destination: str = Field(description="Printed shipment destination, city, port, or country; empty string if absent")
+
+
+class PacketExtraction(Strict):
+    summary: str = Field(description="One plain sentence describing the packet and what it establishes")
+    records: list[PacketRecord]
+    missing_links: list[str] = Field(description="Links needed to connect the money flow that are absent from the packet")
+
+
+TASK_SCHEMAS: dict[str, type[BaseModel]] = {
+    "contract_extract": ContractExtraction,
+    "scan_extract": ScanExtraction,
+    "packet_extract": PacketExtraction,
+}

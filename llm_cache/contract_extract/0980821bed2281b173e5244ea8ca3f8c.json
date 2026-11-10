@@ -1,0 +1,66 @@
+{
+  "created_at": "2026-11-09T18:37:20.198712+00:00",
+  "model": "claude-haiku-5-5",
+  "output": {
+    "clauses": [
+      {
+        "clause_type": "surcharge_passthrough",
+        "confidence": 0.3,
+        "obligation_strength": "none",
+        "page": 1,
+        "quoted_text": "(b) Customs duties and tariffs assessed on imported goods are stated separately on Customer's invoice at Seller's actual cost and are payable with the invoice.",
+        "reasoning": "This clause bills tariffs to the customer as a separate invoice line, so it is a surcharge passthrough. It says nothing about refunds, so no refund obligation can be read from it alone.",
+        "refund_owed_to_customer": "unclear"
+      },
+      {
+        "clause_type": "refund_obligation",
+        "confidence": 0.9,
+        "obligation_strength": "conditional",
+        "page": 1,
+        "quoted_text": "(c) Should Seller later receive from any governmental authority a rebate, drawback or return of duties that were so stated on Customer's invoices, Seller shall remit the amount so received, less the direct costs of obtaining it, to Customer within forty-five (45) days of receipt, with a statement identifying the invoices concerned.",
+        "reasoning": "Seller must remit duty refunds received from a government authority to the customer for duties stated on the customer's invoices. The amount is owed net of direct costs of obtaining it, so the obligation is conditional. The clause does not expressly name Customs, but a return of duties from a governmental authority appears to cover it.",
+        "refund_owed_to_customer": "yes"
+      }
+    ],
+    "fields": [
+      {
+        "confidence": 0.95,
+        "name": "buyer_name",
+        "page": 1,
+        "quoted_text": "Customer: Keystone Marine Supply Co.",
+        "value": "Keystone Marine Supply Co."
+      },
+      {
+        "confidence": 0.95,
+        "name": "seller_name",
+        "page": 1,
+        "quoted_text": "Pacific Crest Imports LLC",
+        "value": "Pacific Crest Imports LLC"
+      },
+      {
+        "confidence": 0.95,
+        "name": "governing_law",
+        "page": 1,
+        "quoted_text": "Washington law governs.",
+        "value": "Washington"
+      },
+      {
+        "confidence": 0.95,
+        "name": "payment_terms_days",
+        "page": 1,
+        "quoted_text": "Net 30 days from invoice.",
+        "value": "30"
+      },
+      {
+        "confidence": 0.95,
+        "name": "tariff_clause_heading",
+        "page": 1,
+        "quoted_text": "7. TAXES AND DUTIES.",
+        "value": "TAXES AND DUTIES."
+      }
+    ]
+  },
+  "prompt_version": "v1",
+  "source": "api",
+  "task": "contract_extract"
+}

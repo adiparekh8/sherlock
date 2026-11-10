@@ -45,7 +45,7 @@ def test_nothing_is_auto_confirmed_and_drafts_trace_to_ledger(seeded):
     obs = session.scalars(select(CandidateObligation)).all()
     assert obs and all(o.status == "pending_review" for o in obs)
     assert all(o.confirmed_amount_cents is None for o in obs)
-    clear = next(o for o in obs if o.customer_id == "CUST-001")
+    clear = next(o for o in obs if o.customer_id == "CUST-001" and o.clause_type == "refund_obligation")
     assert clear.refund_owed_to_customer == "yes" and clear.draft_amount_cents > 0
     assert any(e["entity"] == "invoice" for e in clear.evidence)
     # A customer that never paid a surcharge (DDP) has a zero draft.
