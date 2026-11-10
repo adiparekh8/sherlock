@@ -284,19 +284,28 @@ async function mountShipmentMaps(uploads) {
       if (!container) continue;
       const routes = (item.analysis.records || []).filter(r => r.record_type === "shipment" && r.origin && r.destination).slice(0, 6);
       const resolved = (await Promise.all(routes.map(async r => ({ record: r, a: await resolveGeoPoint(r.origin), b: await resolveGeoPoint(r.destination) })))).filter(r => r.a && r.b);
-      const features = resolved.flatMap(({ record: r, a, b }) => {
-        return [{ type: "Feature", properties: { kind: "route", reference: r.reference || "Shipment" }, geometry: { type: "LineString", coordinates: [[a[1], a[2]], [b[1], b[2]]] } },
-          { type: "Feature", properties: { kind: "point", label: r.origin }, geometry: { type: "Point", coordinates: [a[1], a[2]] } },
-          { type: "Feature", properties: { kind: "point", label: r.destination }, geometry: { type: "Point", coordinates: [b[1], b[2]] } }];
-      });
-      if (!features.length) { container.innerHTML = `<div class="map-setup"><b>Locations found, but not mappable</b><span>Mapbox could not resolve the printed port locations. The route is still shown above.</span></div>`; continue; }
+      const features = (await Promise.all(resolved.map(async ({ record: r, a, b }) => {
+        try {
+          const response = await fetch(`/sea-route?${new URLSearchParams({lon1:a[1],lat1:a[2],lon2:b[1],lat2:b[2]})}`);
+          if (!response.ok) return [];
+          const { geometry } = await response.json();
+          const coordinates = geometry.coordinates;
+          return [{ type: "Feature", properties: { kind: "route", reference: r.reference || "Shipment" }, geometry },
+            { type: "Feature", properties: { kind: "point", label: `${r.origin} · estimated sea endpoint` }, geometry: { type: "Point", coordinates: coordinates[0] } },
+            { type: "Feature", properties: { kind: "point", label: `${r.destination} · estimated sea endpoint` }, geometry: { type: "Point", coordinates: coordinates[coordinates.length - 1] } }];
+        } catch (_) { return []; }
+      }))).flat();
+      if (!container.isConnected) return;
+      container.insertAdjacentHTML("afterend", `<p class="map-empty">Estimated sea routes · ${features.length / 3} of ${routes.length} routes shown. Actual vessel paths may differ.</p>`);
+      if (!features.length) { container.innerHTML = `<div class="map-setup"><b>Sea route unavailable</b><span>We could not resolve both locations to a sea route. The printed locations remain below.</span></div>`; continue; }
       const map = new mapboxgl.Map({ accessToken: S.mapboxToken, container, style: "mapbox://styles/mapbox/dark-v11", center: [8, 25], zoom: 1.25, attributionControl: true });
       map.on("load", () => {
         map.addSource("shipments", { type: "geojson", data: { type: "FeatureCollection", features } });
-        map.addLayer({ id: "shipment-route", type: "line", source: "shipments", filter: ["==", ["get", "kind"], "route"], paint: { "line-color": "#b4ff49", "line-width": 2.2, "line-opacity": .9 } });
-        map.addLayer({ id: "shipment-point", type: "circle", source: "shipments", filter: ["==", ["get", "kind"], "point"], paint: { "circle-color": "#b4ff49", "circle-radius": 5, "circle-stroke-color": "#050507", "circle-stroke-width": 2 } });
+        const accent = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim();
+        map.addLayer({ id: "shipment-route", type: "line", source: "shipments", filter: ["==", ["get", "kind"], "route"], paint: { "line-color": accent, "line-width": 2.8, "line-opacity": .9 } });
+        map.addLayer({ id: "shipment-point", type: "circle", source: "shipments", filter: ["==", ["get", "kind"], "point"], paint: { "circle-color": accent, "circle-radius": 5, "circle-stroke-color": "#171717", "circle-stroke-width": 2 } });
         map.on("click", "shipment-point", e => new mapboxgl.Popup({ closeButton: false }).setLngLat(e.lngLat).setText(e.features[0].properties.label).addTo(map));
-        const coords = features.filter(f => f.geometry.type === "Point").map(f => f.geometry.coordinates);
+        const coords = features.filter(f => f.geometry.type === "LineString").flatMap(f => f.geometry.coordinates);
         if (coords.length > 1) map.fitBounds(coords.reduce((b, c) => b.extend(c), new mapboxgl.LngLatBounds(coords[0], coords[0])), { padding: 55, maxZoom: 4 });
       });
       S.maps.push(map);
@@ -681,7 +690,7 @@ async function pageMemo() {
   const set = S.documentSets.find(x => x.id === S.workspaceId);
   return `${eyebrow(`TODO · ${set?.name || "document set"}`)}
     <div class="page-head"><div><h1>Secretary TODO</h1><p class="lede">Small tasks linked to the evidence in this document set.</p></div><div class="btn-row"><a class="btn" href="/todo.pdf?workspace_id=${encodeURIComponent(S.workspaceId)}" download>PDF</a><a class="btn primary" href="/todo.xlsx?workspace_id=${encodeURIComponent(S.workspaceId)}" download>Excel</a></div></div>
-    ${card(body || note("No open tasks from the uploaded PDFs."), "todo-list")}`;
+    <section class="todo-whiteboard" aria-label="TODO whiteboard"><header class="board-heading"><span>✎ &nbsp; The follow-up board</span><small>${rows.length} notes · Open a note to copy its email</small></header><div class="todo-list">${body || note("All clear. No follow-ups found in these documents.")}</div></section>`;
 }
 
 async function pageExport() {

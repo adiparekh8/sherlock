@@ -306,6 +306,30 @@ h1 { font-size: clamp(34px, 4vw, 52px); letter-spacing: -.065em; line-height: .9
 .timeline-groups .timeline-card { background: var(--raised); }
 @media (max-width: 500px) { .timeline-groups .timeline { padding-right: 12px; padding-left: 62px; }.timeline-groups .timeline:before { left: 27px; }.timeline-groups .timeline-marker { left: -53px; }.timeline-groups .timeline-event-content { padding: 14px; }.timeline-card-head { flex-wrap: wrap; } }
 
+/* A paper whiteboard for follow-ups, within the dark app shell. */
+.todo-whiteboard { background-color: #f5f1e8; background-image: linear-gradient(#d8cfc142 1px, transparent 1px), linear-gradient(90deg, #d8cfc142 1px, transparent 1px); background-size: 24px 24px; border-radius: 16px; border: 1px solid #d5c5ae; padding: 28px; min-height: 60vh; color: #473a2c; }
+.board-heading { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 32px; }
+.board-heading > span { font-size: 24px; font-weight: 600; letter-spacing: -.04em; }
+.board-heading small { color: #786652; font-size: 12px; }
+.todo-whiteboard .todo-list { max-width: none; grid-template-columns: repeat(auto-fit, minmax(min(290px, 100%), 1fr)); gap: 28px; align-items: start; }
+.todo-whiteboard .todo-item { position: relative; display: block; padding: 25px 22px 22px; border: 1px solid #dbc392; border-radius: 3px 3px 18px 3px; background: #f7dda3; box-shadow: 3px 6px 0 #6b472911, 0 12px 24px #6b472914; transform: rotate(-.7deg); min-width: 0; }
+.todo-whiteboard .todo-item:nth-child(3n+2) { background: #efd0b4; border-color: #d6b596; transform: rotate(.7deg); }
+.todo-whiteboard .todo-item:nth-child(3n) { background: #e0e6cc; border-color: #c1cba9; transform: rotate(-.3deg); }
+.todo-whiteboard .todo-item:before { content: ''; position: absolute; top: -9px; left: calc(50% - 30px); width: 60px; height: 20px; background: #fff9df99; border: 1px solid #d6c9b044; transform: rotate(-3deg); }
+.todo-whiteboard .todo-check { width: 34px; height: 30px; border: 0; margin: 0 0 12px; }
+.todo-whiteboard .todo-check:before { content: '✉'; font-size: 30px; color: #87613c; }
+.todo-whiteboard .todo-item h3 { color: #403225; font-size: 18px; line-height: 1.35; overflow-wrap: anywhere; }
+.todo-whiteboard .todo-item small { display: block; color: #69563f; line-height: 1.6; overflow-wrap: anywhere; }
+.todo-whiteboard .todo-item summary { color: #634323; padding: 10px 0; font-family: var(--sans); font-size: 13px; font-weight: 600; }
+.todo-whiteboard .todo-item p { color: #68513b; font-size: 12px; }
+.todo-whiteboard .todo-subject, .todo-whiteboard .todo-email { background: #fffaf0; color: #403225; border-color: #bba583; }
+.todo-whiteboard .todo-item details label { color: #69563f; }
+.todo-whiteboard .btn { background: #765537; color: #fffaf0; border-color: #765537; margin-top: 8px; }
+.todo-whiteboard .copy-status { color: #385c37; }
+.todo-whiteboard .empty { color: #69563f; }
+.todo-whiteboard .todo-item:focus-within { outline: 2px solid #87613c; outline-offset: 4px; }
+@media(max-width: 600px) { .todo-whiteboard { padding: 20px 16px; }.board-heading { align-items: start; flex-direction: column; }.todo-whiteboard .todo-item { transform: none !important; } }
+
 /* Worker desktop */
 .desktop { min-height: 58vh; display: grid; grid-template-columns: repeat(auto-fit, minmax(145px, 1fr)); align-content: start; gap: 30px 24px; padding: 34px; border: 1px solid #2b2b35; border-radius: 12px; background-color: #101317; background-image: radial-gradient(rgba(180,255,73,.15) 1px, transparent 1px); background-size: 18px 18px; }.desktop-folder { display: grid; justify-items: center; gap: 7px; padding: 14px 8px; border-radius: 8px; color: var(--text); text-align: center; transition: background var(--ease), transform var(--ease); }.desktop-folder:hover { background: rgba(180,255,73,.1); transform: translateY(-2px); }.desktop-folder b { font-size: 14px; font-weight: 500; }.desktop-folder small { max-width: 140px; color: var(--muted); font: 10px/1.4 var(--mono); }.folder-icon { position: relative; width: 76px; height: 54px; border-radius: 5px 6px 6px 6px; background: linear-gradient(145deg, #d1ff6d, #80bf20); box-shadow: inset 0 0 0 1px rgba(255,255,255,.32), 0 10px 18px rgba(0,0,0,.35); }.folder-icon:before { content: ""; position: absolute; top: -7px; left: 4px; width: 31px; height: 12px; border-radius: 4px 4px 0 0; background: #a8e34a; }.folder-icon i { position: absolute; inset: 11px 8px 7px; border: 1px solid rgba(14,28,4,.4); border-radius: 3px; }.desktop-folder.ship .folder-icon { background: linear-gradient(145deg, #8eb3ff, #426de0); }.desktop-folder.ship .folder-icon:before { background: #6896f4; }.desktop-folder.review .folder-icon { background: linear-gradient(145deg, #ffd880, #e69a2d); }.desktop-folder.review .folder-icon:before { background: #f3bb56; }.desktop-folder.history .folder-icon { background: linear-gradient(145deg, #c4bfd4, #77718f); }.desktop-folder.history .folder-icon:before { background: #9892ad; }
 @media (max-width: 700px) { .desktop { grid-template-columns: repeat(2, minmax(0,1fr)); padding: 22px 12px; gap: 22px 8px; } }

@@ -23,6 +23,9 @@ GET  /manifest                              dataset manifest (planted cases pane
 from __future__ import annotations
 
 import hashlib
+from functools import lru_cache
+from threading import Lock
+import searoute
 import json
 import re
 import zipfile
@@ -89,6 +92,27 @@ def config():
 
 
 # --------------------------------------------------------------------------- document intake
+
+_route_lock = Lock()
+
+
+@lru_cache(maxsize=256)
+def _sea_geometry(lon1: float, lat1: float, lon2: float, lat2: float):
+    # The routing library shares a mutable graph: serialize its use.
+    with _route_lock:
+        route = searoute.searoute([lon1, lat1], [lon2, lat2], append_orig_dest=False)
+    if len(route['geometry']['coordinates']) < 2:
+        raise ValueError('No sea route between these locations')
+    return route['geometry']
+
+
+@app.get('/sea-route')
+def sea_route(lon1: float = Query(..., ge=-180, le=180), lat1: float = Query(..., ge=-90, le=90),
+              lon2: float = Query(..., ge=-180, le=180), lat2: float = Query(..., ge=-90, le=90)):
+    try:
+        return {'geometry': _sea_geometry(lon1, lat1, lon2, lat2), 'estimated': True}
+    except (ValueError, KeyError) as exc:
+        raise HTTPException(422, 'Sea route unavailable for these locations') from exc
 
 
 def _workspace_path() -> Path:
