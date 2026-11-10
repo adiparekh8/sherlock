@@ -18,6 +18,8 @@ class Settings(BaseSettings):
     anthropic_model: str = "claude-opus-5-5"
     llm_cache_dir: Path = Path("llm_cache")
     uploaded_documents_dir: Path = Path(".sherlock/uploads")
+    # Mapbox public tokens begin with pk. and are intentionally delivered to the browser for map rendering.
+    mapbox_access_token: str = ""
 
     google_application_credentials: str | None = None
     docai_processor_name: str | None = None

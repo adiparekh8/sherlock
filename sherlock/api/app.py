@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 import zipfile
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -83,24 +84,82 @@ def config():
     """What the frontend needs to render honestly: the threshold that colors confidence, and the demo actor."""
     s = get_settings()
     return {"auto_threshold": DEFAULT_CONFIG.auto_threshold, "demo_actor": s.sherlock_demo_actor,
-            "model": s.anthropic_model}
+            "model": s.anthropic_model, "mapbox_access_token": s.mapbox_access_token}
 
 
 # --------------------------------------------------------------------------- document intake
 
 
+def _workspace_path() -> Path:
+    return get_settings().uploaded_documents_dir.parent / "workspaces.json"
+
+
+def _workspaces() -> list[dict]:
+    path = _workspace_path()
+    try:
+        return json.loads(path.read_text()) if path.exists() else []
+    except json.JSONDecodeError:
+        return []
+
+
+class WorkspaceIn(BaseModel):
+    name: str = Field(min_length=1, max_length=80)
+
+
+@app.get("/workspaces")
+def list_workspaces():
+    return {"workspaces": _workspaces()}
+
+
+@app.post("/workspaces")
+def create_workspace(body: WorkspaceIn):
+    name = body.name.strip()
+    workspace_id = re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")[:48]
+    if not workspace_id:
+        raise HTTPException(422, "document set name needs letters or numbers")
+    workspaces = _workspaces()
+    if any(w.get("id") == workspace_id for w in workspaces):
+        raise HTTPException(409, "a document set with that name already exists")
+    created = {"id": workspace_id, "name": name}
+    path = _workspace_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(workspaces + [created], indent=2) + "\n")
+    return created
+
+
 @app.get("/uploads")
-def list_uploads():
+def list_uploads(scope: str = Query("active", pattern="^(active|history|all)$"), workspace_id: str | None = None):
     directory = get_settings().uploaded_documents_dir
     if not directory.exists():
         return {"uploads": []}
     uploads = []
     for path in sorted(directory.glob("*.json"), key=lambda p: p.stat().st_mtime, reverse=True):
         try:
-            uploads.append(json.loads(path.read_text()))
+            upload = json.loads(path.read_text())
+            archived = bool(upload.get("archived", False))
+            belongs = workspace_id is None or upload.get("workspace_id") == workspace_id
+            if belongs and (scope == "all" or (scope == "history" and archived) or (scope == "active" and not archived)):
+                uploads.append(upload)
         except json.JSONDecodeError:
             continue
     return {"uploads": uploads}
+
+
+@app.post("/uploads/archive")
+def archive_uploads():
+    """Move every active packet out of the worker desktop and into read-only history."""
+    directory = get_settings().uploaded_documents_dir
+    moved = 0
+    for path in directory.glob("*.json") if directory.exists() else []:
+        try:
+            upload = json.loads(path.read_text())
+        except json.JSONDecodeError:
+            continue
+        if not upload.get("archived", False):
+            upload["archived"] = True
+            path.write_text(json.dumps(upload, indent=2) + "\n")
+            moved += 1
+    return {"archived": moved}
 
 
 def _pdfs_from_upload(content: bytes, filename: str) -> list[tuple[str, bytes]]:
@@ -129,6 +188,9 @@ async def upload_documents(request: Request):
     if not get_llm().has_key:
         raise HTTPException(422, "Add ANTHROPIC_API_KEY to .env before analyzing documents")
     filename = Path(request.headers.get("x-filename", "upload")).name or "upload"
+    workspace_id = request.headers.get("x-workspace-id", "")
+    if workspace_id not in {w.get("id") for w in _workspaces()}:
+        raise HTTPException(422, "choose a document set before uploading")
     packets = _pdfs_from_upload(content, filename)
     directory = get_settings().uploaded_documents_dir
     directory.mkdir(parents=True, exist_ok=True)
@@ -141,7 +203,7 @@ async def upload_documents(request: Request):
         except Exception as exc:
             raise HTTPException(502, f"could not analyze {pdf_name}: {exc}") from exc
         upload_id = hashlib.sha256(pdf).hexdigest()[:16]
-        payload = {"id": upload_id, "filename": pdf_name, "analysis": analysis}
+        payload = {"id": upload_id, "filename": pdf_name, "analysis": analysis, "archived": False, "workspace_id": workspace_id}
         (directory / f"{upload_id}.pdf").write_bytes(pdf)
         (directory / f"{upload_id}.json").write_text(json.dumps(payload, indent=2) + "\n")
         uploads.append(payload)

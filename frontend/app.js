@@ -6,12 +6,11 @@ const PAGES = [
   ["documents", "Documents", "M6 3h8l4 4v14H6z M14 3v5h5 M9 13h6 M9 17h6"],
   ["overview", "Overview", "M3 3h18v18H3z M3 9h18 M9 21V9"],
   ["ledger", "Ledger", "M4 5h16 M4 12h16 M4 19h10"],
-  ["review", "Review Queue", "M12 3l9 16H3z M12 10v4 M12 17h.01"],
   ["memo", "Memo", "M6 3h9l5 5v13H6z M14 3v6h6 M9 13h6 M9 17h6"],
   ["export", "Export", "M12 3v12 M7 10l5 5 5-5 M4 19h16"],
 ];
 
-const S = { page: "documents", datasets: [], loaded: null, summary: null, refund: null, threshold: 0.8, actor: "", queueCount: 0, uploads: [], selectedUpload: null };
+const S = { page: "documents", datasets: [], documentSets: [], workspaceId: null, loaded: null, summary: null, refund: null, threshold: 0.8, actor: "", queueCount: 0, uploads: [], selectedUpload: null };
 
 // --------------------------------------------------------------------------- helpers
 
@@ -52,6 +51,7 @@ function progress(on) {
 function note(text, cls = "empty") { return `<div class="${cls}">${esc(text)}</div>`; }
 
 let inflight = 0;
+let renderVersion = 0;
 async function api(method, path, body) {
   inflight++; progress(true);
   try {
@@ -72,7 +72,7 @@ const post = (p, b) => api("POST", p, b || {});
 async function upload(file) {
   inflight++; progress(true);
   try {
-    const r = await fetch("/uploads", { method: "POST", headers: { "content-type": file.type || "application/octet-stream", "x-filename": file.name }, body: file });
+    const r = await fetch("/uploads", { method: "POST", headers: { "content-type": file.type || "application/octet-stream", "x-filename": file.name, "x-workspace-id": S.workspaceId || "" }, body: file });
     if (!r.ok) { const body = await r.json().catch(() => ({})); throw new Error(body.detail || `Upload failed (${r.status})`); }
     return r.json();
   } finally { if (--inflight === 0) progress(false); }
@@ -103,7 +103,11 @@ function renderNav() {
 
 function renderTopbar() {
   const el = document.getElementById("topbar");
-  if (!S.summary) { el.innerHTML = `<div class="stat"><span>Dataset</span><b class="dim">Not loaded</b></div>`; return; }
+  if (!S.summary) {
+    const w = S.workspace;
+    el.innerHTML = w?.documents ? `<div class="stat"><span>Documents</span><b>${w.documents}</b></div><div class="stat"><span>Money in</span><b>${formatCents(w.moneyIn)}</b></div><div class="stat"><span>Money out</span><b>${formatCents(w.moneyOut)}</b></div><div class="stat"><span>Needs review</span><b>${w.needsReview}</b></div><div class="spacer"></div><div class="stat"><span>Workspace</span><b class="dim">Live</b></div>` : `<div class="stat"><span>Workspace</span><b class="dim">No documents</b></div>`;
+    return;
+  }
   const s = S.summary;
   const off = s.refund_cents - s.allocated_cents - s.unallocated_cents;
   const pill = off === 0 ? `<span class="pill ok">Balanced</span>` : `<span class="pill bad">Off by ${formatCents(Math.abs(off))}</span>`;
@@ -122,16 +126,29 @@ function renderSidebar() {
     || `<option>no datasets under data/</option>`;
   document.getElementById("reviewer").value = S.actor;
   const d = S.datasets.find(x => x.loaded);
-  document.getElementById("foot").textContent = d ? `${d.name} · ${d.counts.shipments} shipments · ${d.counts.contracts} contracts` : "load a dataset to begin";
+  document.getElementById("foot").textContent = d ? `${d.name} · ${d.counts.shipments} shipments · ${d.counts.contracts} contracts` : (S.workspace?.documents ? `${S.workspace.documents} uploaded documents · live` : "upload documents to begin");
+}
+
+function buildWorkspace(uploads) {
+  const records = uploads.flatMap(file => (file.analysis?.records || []).map((record, i) => ({ ...record, file: file.filename, key: `${file.id}-${i}` })));
+  const amount = direction => records.filter(r => r.direction === direction).reduce((sum, r) => sum + (Number(r.amount_cents) || 0), 0);
+  const missing = uploads.flatMap(file => (file.analysis?.missing_links || []).map(text => ({ file: file.filename, text })));
+  const incompleteShipments = records.filter(r => r.record_type === "shipment" && (!r.origin || !r.destination));
+  return { documents: uploads.length, records, moneyIn: amount("money_in"), moneyOut: amount("money_out"), missing, incompleteShipments, needsReview: missing.length + incompleteShipments.length };
 }
 
 async function refreshSummary() {
-  const ds = await get("/datasets");
+  const [ds, sets] = await Promise.all([get("/datasets"), get("/workspaces")]);
   S.datasets = ds.datasets; S.loaded = ds.loaded;
+  S.documentSets = sets.workspaces || [];
+  if (!S.documentSets.some(set => set.id === S.workspaceId)) S.workspaceId = null;
+  const uploaded = S.workspaceId ? await get(`/uploads?workspace_id=${encodeURIComponent(S.workspaceId)}`) : { uploads: [] };
+  S.uploads = uploaded.uploads || [];
+  S.workspace = buildWorkspace(S.uploads);
   if (S.loaded) {
     const r = await get("/refund");
     S.summary = r.summary; S.refund = r.refund; S.queueCount = r.summary.queue_count;
-  } else { S.summary = null; S.refund = null; S.queueCount = 0; }
+  } else { S.summary = null; S.refund = null; S.queueCount = S.workspace.needsReview; }
   renderSidebar(); renderTopbar(); renderNav();
 }
 
@@ -220,34 +237,39 @@ function routeMap(records, id) {
 async function mountShipmentMaps(uploads) {
   (S.maps || []).forEach(map => map.remove());
   S.maps = [];
-  const mapped = uploads.filter(item => (item.analysis?.records || []).some(r => r.record_type === "shipment" && geoPoint(r.origin) && geoPoint(r.destination)));
-  if (!mapped.length) return;
+  if (!uploads.length) return;
+  if (!S.mapboxToken || !S.mapboxToken.startsWith("pk.")) {
+    document.querySelectorAll(".shipment-map").forEach(el => { el.innerHTML = `<div class="map-setup"><b>Mapbox needs a public token</b><span>Add <code>MAPBOX_ACCESS_TOKEN=pk.…</code> to <code>.env</code>, then restart Sherlock.</span></div>`; });
+    return;
+  }
+  if (!window.mapboxgl || !window.mapboxgl.supported()) {
+    document.querySelectorAll(".shipment-map").forEach(el => { el.textContent = "Mapbox requires WebGL2. Enable it in this browser and reload."; });
+    return;
+  }
   try {
-    const maplibregl = await import("https://unpkg.com/maplibre-gl@6.17.0/dist/maplibre-gl.mjs");
-    for (const item of mapped) {
+    for (const item of uploads) {
       const container = document.getElementById(`shipment-map-${item.id}`);
       if (!container) continue;
-      const routes = item.analysis.records.filter(r => r.record_type === "shipment" && geoPoint(r.origin) && geoPoint(r.destination)).slice(0, 6);
+      const routes = (item.analysis.records || []).filter(r => r.record_type === "shipment" && geoPoint(r.origin) && geoPoint(r.destination)).slice(0, 6);
       const features = routes.flatMap(r => {
         const a = geoPoint(r.origin), b = geoPoint(r.destination);
         return [{ type: "Feature", properties: { kind: "route", reference: r.reference || "Shipment" }, geometry: { type: "LineString", coordinates: [[a[1], a[2]], [b[1], b[2]]] } },
           { type: "Feature", properties: { kind: "point", label: r.origin }, geometry: { type: "Point", coordinates: [a[1], a[2]] } },
           { type: "Feature", properties: { kind: "point", label: r.destination }, geometry: { type: "Point", coordinates: [b[1], b[2]] } }];
       });
-      const map = new maplibregl.Map({ container, center: [8, 25], zoom: 1.25, attributionControl: true,
-        style: { version: 8, sources: { osm: { type: "raster", tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"], tileSize: 256, attribution: "© OpenStreetMap contributors" } }, layers: [{ id: "osm", type: "raster", source: "osm", paint: { "raster-saturation": -1, "raster-brightness-max": .43, "raster-contrast": .25 } }] } });
+      const map = new mapboxgl.Map({ accessToken: S.mapboxToken, container, style: "mapbox://styles/mapbox/dark-v11", center: [8, 25], zoom: 1.25, attributionControl: true });
       map.on("load", () => {
         map.addSource("shipments", { type: "geojson", data: { type: "FeatureCollection", features } });
         map.addLayer({ id: "shipment-route", type: "line", source: "shipments", filter: ["==", ["get", "kind"], "route"], paint: { "line-color": "#b4ff49", "line-width": 2.2, "line-opacity": .9 } });
         map.addLayer({ id: "shipment-point", type: "circle", source: "shipments", filter: ["==", ["get", "kind"], "point"], paint: { "circle-color": "#b4ff49", "circle-radius": 5, "circle-stroke-color": "#050507", "circle-stroke-width": 2 } });
-        map.on("click", "shipment-point", e => new maplibregl.Popup({ closeButton: false }).setLngLat(e.lngLat).setText(e.features[0].properties.label).addTo(map));
+        map.on("click", "shipment-point", e => new mapboxgl.Popup({ closeButton: false }).setLngLat(e.lngLat).setText(e.features[0].properties.label).addTo(map));
         const coords = features.filter(f => f.geometry.type === "Point").map(f => f.geometry.coordinates);
-        if (coords.length > 1) map.fitBounds(coords.reduce((b, c) => b.extend(c), new maplibregl.LngLatBounds(coords[0], coords[0])), { padding: 55, maxZoom: 4 });
+        if (coords.length > 1) map.fitBounds(coords.reduce((b, c) => b.extend(c), new mapboxgl.LngLatBounds(coords[0], coords[0])), { padding: 55, maxZoom: 4 });
       });
       S.maps.push(map);
     }
   } catch (_) {
-    document.querySelectorAll(".shipment-map").forEach(el => { el.textContent = "Map could not load. Check your internet connection."; });
+    document.querySelectorAll(".shipment-map").forEach(el => { el.textContent = "Mapbox could not load. Check your token and internet connection."; });
   }
 }
 
@@ -276,17 +298,50 @@ function uploadTree(item) {
 }
 
 async function pageDocuments() {
-  const result = await get("/uploads");
-  S.uploads = result.uploads || [];
+  const folders = S.documentSets.map(set => {
+    const count = set.id === S.workspaceId ? S.workspace.documents : "";
+    return desktopFolder(set.name, count === "" ? "Open document set" : `${count} active documents`, `#workspace/${encodeURIComponent(set.id)}`, "parent");
+  }).join("");
   return `${eyebrow("Documents")}
-    <div class="page-head"><div><h1>Money flow</h1><p class="lede">Add PDFs or a ZIP of PDFs. Sherlock keeps partial information and shows the missing links.</p></div></div>
+    <div class="page-head"><div><h1>Worker desktop</h1><p class="lede">Each folder is isolated from every other document set.</p></div><button class="btn primary" data-new-set>New document set</button></div>
+    <section class="desktop" aria-label="Worker folders">
+      ${folders || note("Create a document set to begin.")}
+    </section>`;
+}
+
+function desktopFolder(name, detail, href, cls) {
+  return `<a class="desktop-folder ${cls}" href="${href}"><span class="folder-icon"><i></i></span><b>${esc(name)}</b><small>${esc(detail)}</small></a>`;
+}
+
+async function pageWorkspace() {
+  const set = S.documentSets.find(x => x.id === S.workspaceId);
+  if (!set) return `${eyebrow("Documents")}<h1>Document set not found</h1><a class="btn" href="#documents">Back to desktop</a>`;
+  return `${eyebrow(`Documents / ${set.name}`)}
+    <div class="page-head"><div><h1>${esc(set.name)}</h1><p class="lede">Files in this set stay together while a worker processes them.</p></div><a class="btn" href="#documents">Back to desktop</a></div>
+    <section class="desktop child-desktop" aria-label="Current document set folders">
+      ${desktopFolder("Incoming", "Drop PDFs and ZIPs", "#intake", "in")}
+      ${desktopFolder("Shipments", `${S.workspace.records.filter(r => r.record_type === "shipment").length} shipment records`, "#ledger", "ship")}
+    </section>`;
+}
+
+async function pageIntake() {
+  if (!S.workspaceId) return `${eyebrow("Documents / Incoming")}<h1>Choose a document set first</h1><a class="btn primary" href="#documents">Back to desktop</a>`;
+  return `${eyebrow("Documents / Incoming")}
+    <div class="page-head"><div><h1>Incoming files</h1><p class="lede">Drop a PDF or ZIP to create a new active workspace record.</p></div><a class="btn" href="#documents">Back to desktop</a></div>
     <section id="drop-panel" class="drop-panel" tabindex="0">
       <input id="pdf-picker" type="file" accept="application/pdf,.pdf,.zip,application/zip" multiple hidden>
       <div class="drop-mark">+</div><b>Drop PDFs or a ZIP here</b><p>or <button class="link-btn" data-choose-files>choose files</button></p>
       <small>Files are analyzed with Claude only after you select them. ZIPs may contain up to 12 PDFs.</small>
     </section>
     <div id="upload-status"></div>
-    <div class="tree-list">${S.uploads.map(uploadTree).join("") || note("No documents yet. Upload a packet to start the money-flow map and flowchart.")}</div>`;
+    <div class="tree-list">${S.uploads.map(uploadTree).join("") || note("No active documents. New uploads appear here and across the workspace.")}</div>`;
+}
+
+async function pageHistory() {
+  const result = await get("/uploads?scope=history");
+  S.history = result.uploads || [];
+  const rows = S.history.map(item => { const a = item.analysis || {}, records = a.records || [], short = (a.summary || "No summary").slice(0, 150); return `<tr><td class="mono">${esc(item.filename)}</td><td class="num">${a.page_count || "—"}</td><td class="num">${records.length}</td><td class="dim">${esc(short)}${short.length === 150 ? "…" : ""}</td></tr>`; }).join("");
+  return `${eyebrow("Documents / History")}<div class="page-head"><div><h1>History</h1><p class="lede">Archived packets are retained here in compact form and do not affect the active workspace.</p></div></div>${table([{label:"file"},{label:"pages",num:true},{label:"records",num:true},{label:"summary"}], rows, "tight")}`;
 }
 
 async function handleFiles(files) {
@@ -301,7 +356,7 @@ async function handleFiles(files) {
 // --------------------------------------------------------------------------- overview
 
 async function pageOverview() {
-  if (!S.loaded) return `${eyebrow("Overview")}<h1>No dataset loaded</h1>${note("Upload documents from the Documents page to start a workspace.")}`;
+  if (!S.loaded) return workspaceOverview();
   const led = await get("/ledger");
   const s = led.summary;
   const auto = (s.by_status.auto_proposed || {}).cents || 0;
@@ -321,12 +376,19 @@ async function pageOverview() {
     <div class="page-head"><h1>${esc(S.refund.importer)}</h1><span class="pill">${esc(S.refund.source || "refund")}</span></div>
     <p class="lede">Track allocations and review unmatched records.</p>
     <div class="grid tiles">${tiles}</div>
-    <div class="summary-action"><p>${s.queue_count} allocation lines need review.</p><a class="btn primary" href="#review">Review records</a></div>
+    <div class="summary-action"><p>${s.queue_count} allocation lines need attention.</p><a class="btn primary" href="#ledger">Open ledger</a></div>
     <div class="grid two" style="margin-top:16px">
       ${card(`${eyebrow("Unallocated by reason")}${table([{ label: "reason" }, { label: "lines", num: true }, { label: "amount", num: true }], reasons)}`)}
       ${card(`${eyebrow("Allocated by customer")}${table([{ label: "customer" }, { label: "name" }, { label: "lines", num: true }, { label: "amount", num: true }], customers)}`)}
     </div>
     <details class="dataset-details"><summary>Manage data</summary>${datasetPanel()}</details>`;
+}
+
+function workspaceOverview() {
+  const w = S.workspace;
+  if (!w.documents) return `${eyebrow("Overview")}<h1>No documents yet</h1>${note("Upload a PDF to start the workspace.")}`;
+  const tiles = [["Documents", w.documents, "", "uploaded packets"], ["Money in", formatCents(w.moneyIn), "money", "printed amounts"], ["Money out", formatCents(w.moneyOut), "money", "printed amounts"], ["Shipment records", w.records.filter(r => r.record_type === "shipment").length, "", "documented routes"], ["Needs review", w.needsReview, w.needsReview ? "warn" : "ok", "missing links or locations"], ["Records", w.records.length, "", "extracted from documents"]].map(([l, v, cls, sub]) => card(`${eyebrow(l)}<b>${v}</b><small>${sub}</small>`, `tile ${cls}`)).join("");
+  return `${eyebrow("Overview · live workspace")}<div class="page-head"><h1>Document dashboard</h1></div><p class="lede">Every page reads the same uploaded-document workspace.</p><div class="grid tiles">${tiles}</div><div class="summary-action"><p>${w.needsReview} items need more evidence.</p><a class="btn primary" href="#ledger">Open ledger</a></div>`;
 }
 
 function datasetPanel() {
@@ -342,7 +404,7 @@ function datasetPanel() {
 // --------------------------------------------------------------------------- ledger
 
 async function pageLedger() {
-  if (!S.loaded) return `${eyebrow("Ledger")}<h1>No dataset loaded</h1>${note("open Overview and load one")}`;
+  if (!S.loaded) return workspaceLedger();
   const led = await get("/ledger");
   S.ledgerRows = led.records;
   S.ledgerView = "all";
@@ -362,6 +424,12 @@ async function pageLedger() {
     </div>
     <div id="ledger-table">${ledgerTable(led.records)}</div>
     <div id="drill" style="margin-top:16px">${note("click a line to open its evidence chain")}</div>`;
+}
+
+function workspaceLedger() {
+  const w = S.workspace;
+  const rows = w.records.map(r => `<tr><td class="mono">${esc(r.file)}</td><td>${esc(label(r.record_type))}</td><td class="mono">${esc(r.reference || "—")}</td><td>${esc(r.counterparty || "—")}</td><td class="mono">${esc(r.origin || "—")}</td><td class="mono">${esc(r.destination || "—")}</td><td class="num money">${r.amount_cents === null ? "—" : formatCents(r.amount_cents)}</td><td>${status(r.direction === "unknown" ? "pending_review" : r.direction, r.direction === "money_in" ? "ok" : r.direction === "money_out" ? "auto" : "review")}</td></tr>`).join("");
+  return `${eyebrow("Ledger · live workspace")}<div class="page-head"><h1>Document ledger</h1></div><p class="lede">Records update as soon as a document is analyzed.</p>${table([{label:"document"},{label:"type"},{label:"reference"},{label:"counterparty"},{label:"origin"},{label:"destination"},{label:"amount",num:true},{label:"flow"}], rows)}`;
 }
 
 function ledgerTable(rows) {
@@ -403,7 +471,7 @@ async function drillDown(id) {
 // --------------------------------------------------------------------------- review queue
 
 async function pageReview() {
-  if (!S.loaded) return `${eyebrow("Review queue")}<h1>No dataset loaded</h1>${note("open Overview and load one")}`;
+  if (!S.loaded) return workspaceReview();
   const [q, obs] = await Promise.all([get("/review/queue"), get("/obligations")]);
   const details = await Promise.all(q.allocations.map(a => get(`/allocations/${a.id}`)));
   const items = await Promise.all(q.allocations.map((a, i) => queueItem(a, details[i])));
@@ -420,6 +488,14 @@ async function pageReview() {
     ${eyebrow("Contract clauses", "margin-top:28px")}
     <div class="queue">${obItems.join("") || note("no contract clauses waiting")}</div>
     ${decided.length ? `${eyebrow("Decided clauses", "margin-top:28px")}<div class="queue">${decidedItems.join("")}</div>` : ""}`;
+}
+
+function workspaceReview() {
+  const w = S.workspace;
+  const links = w.missing.map(x => `<li><b>${esc(x.file)}</b><span>${esc(x.text)}</span></li>`).join("");
+  const shipments = w.incompleteShipments.map(x => `<li><b>${esc(x.file)} · ${esc(x.reference || "Shipment")}</b><span>Missing ${!x.origin ? "origin" : "destination"}</span></li>`).join("");
+  const items = links + shipments;
+  return `${eyebrow(`Review queue · ${w.needsReview} pending`)}<div class="page-head"><h1>Evidence needed</h1></div><p class="lede">This queue is shared with the document dashboard and updates after every upload.</p>${card(items ? `<ul class="workspace-review">${items}</ul>` : note("Nothing needs review."))}`;
 }
 
 async function queueItem(rec, detail) {
@@ -531,22 +607,34 @@ async function pageExport() {
 
 // --------------------------------------------------------------------------- router + events
 
-const RENDER = { documents: pageDocuments, overview: pageOverview, ledger: pageLedger, review: pageReview, memo: pageMemo, export: pageExport };
+const RENDER = { documents: pageDocuments, workspace: pageWorkspace, intake: pageIntake, overview: pageOverview, ledger: pageLedger, memo: pageMemo, export: pageExport };
 
 async function render() {
   const main = document.getElementById("main");
+  const version = ++renderVersion;
+  const page = S.page;
   try {
+    // Refresh the shell independently of the page body. Every page function then
+    // fetches its own endpoint, so Ledger/Review/Memo/Export do not depend on
+    // Overview having rendered first.
     await refreshSummary();
-    main.innerHTML = await RENDER[S.page]();
-    if (S.page === "documents") mountShipmentMaps(S.uploads);
+    if (version !== renderVersion || page !== S.page) return;
+    const html = await RENDER[page]();
+    if (version !== renderVersion || page !== S.page) return;
+    main.innerHTML = html;
+    if (page === "intake") mountShipmentMaps(S.uploads);
   } catch (e) {
+    if (version !== renderVersion || page !== S.page) return;
     main.innerHTML = note(e.message, "error");
   }
 }
 
 function route() {
   const id = (location.hash || "#documents").slice(1);
-  S.page = RENDER[id] ? id : "documents";
+  if (id.startsWith("workspace/")) {
+    S.workspaceId = decodeURIComponent(id.slice("workspace/".length));
+    S.page = "workspace";
+  } else S.page = RENDER[id] ? id : "documents";
   window.scrollTo(0, 0);
   renderNav();
   render();
@@ -560,11 +648,31 @@ function reasonOf(id, errId) {
 }
 
 async function act(fn) {
-  try { await fn(); await render(); }
+  try {
+    const result = await fn();
+    // Mutation endpoints return the fresh ledger summary. Apply it immediately
+    // so the dashboard chrome and whichever page is open stay in sync together.
+    if (result && result.summary) {
+      S.summary = result.summary;
+      S.queueCount = result.summary.queue_count;
+      renderTopbar(); renderNav();
+    }
+    await render();
+  }
   catch (e) { document.getElementById("main").insertAdjacentHTML("afterbegin", note(e.message, "error")); window.scrollTo(0, 0); }
 }
 
 document.addEventListener("click", async e => {
+  const newSet = e.target.closest("[data-new-set]");
+  if (newSet) {
+    const name = window.prompt("Name this document set");
+    if (!name || !name.trim()) return;
+    try {
+      const created = await post("/workspaces", { name: name.trim() });
+      location.hash = `#workspace/${encodeURIComponent(created.id)}`;
+    } catch (err) { document.getElementById("main").insertAdjacentHTML("afterbegin", note(err.message, "error")); }
+    return;
+  }
   const choose = e.target.closest("[data-choose-files]");
   if (choose) { document.getElementById("pdf-picker").click(); return; }
   const view = e.target.closest("[data-ledger-view]");
@@ -679,6 +787,7 @@ async function boot() {
   try {
     const cfg = await get("/config");
     S.threshold = cfg.auto_threshold;
+    S.mapboxToken = cfg.mapbox_access_token || "";
     let saved = "";
     try { saved = localStorage.getItem("sherlock.actor") || ""; } catch (_) { /* private mode */ }
     S.actor = saved || cfg.demo_actor || "";
