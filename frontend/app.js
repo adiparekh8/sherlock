@@ -224,10 +224,39 @@ function evidenceList(ev) {
 
 // --------------------------------------------------------------------------- document tree
 
-const GEO = [["shanghai",121.47,31.23],["shenzhen",114.06,22.54],["hong kong",114.17,22.32],["singapore",103.82,1.35],["tokyo",139.65,35.68],["busan",129.08,35.18],["los angeles",-118.24,34.05],["long beach",-118.19,33.77],["new york",-74.01,40.71],["miami",-80.19,25.76],["houston",-95.37,29.76],["seattle",-122.33,47.61],["rotterdam",4.48,51.92],["hamburg",9.99,53.55],["london",-0.13,51.51],["dubai",55.27,25.20],["mumbai",72.88,19.08],["sydney",151.21,-33.87],["china",104.20,35.86],["united states",-98.58,39.83],["usa",-98.58,39.83],["germany",10.45,51.17],["japan",138.25,36.20],["india",78.96,20.59]];
+const GEO = [["shanghai",121.47,31.23],["shenzhen",114.06,22.54],["hong kong",114.17,22.32],["singapore",103.82,1.35],["tokyo",139.65,35.68],["busan",129.08,35.18],["los angeles",-118.24,34.05],["long beach",-118.19,33.77],["new york",-74.01,40.71],["miami",-80.19,25.76],["houston",-95.37,29.76],["seattle",-122.33,47.61],["rotterdam",4.48,51.92],["hamburg",9.99,53.55],["london",-0.13,51.51],["dubai",55.27,25.20],["mumbai",72.88,19.08],["sydney",151.21,-33.87],["thessaloniki",22.926,40.635]];
+const GEO_CACHE = new Map();
 function geoPoint(place) { const q = String(place || "").toLowerCase(); return GEO.find(([name]) => q.includes(name)); }
+async function resolveGeoPoint(place) {
+  const fallback = geoPoint(place);
+  if (!place || !S.mapboxToken) return fallback;
+  const key = String(place).trim().toLowerCase();
+  if (GEO_CACHE.has(key)) return GEO_CACHE.get(key);
+  const queries = [String(place), `port ${String(place)}`];
+  try {
+    let feature = null;
+    for (const query of queries) {
+      const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?types=poi&limit=1&access_token=${encodeURIComponent(S.mapboxToken)}`;
+      const result = await fetch(url).then(r => r.ok ? r.json() : null);
+      feature = result?.features?.[0];
+      if (feature) break;
+    }
+    if (!feature) {
+      const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(place)}.json?types=place,locality&limit=1&access_token=${encodeURIComponent(S.mapboxToken)}`;
+      const result = await fetch(url).then(r => r.ok ? r.json() : null);
+      feature = result?.features?.[0];
+    }
+    const center = feature?.center;
+    const point = center ? [key, Number(center[0]), Number(center[1]), feature.place_name] : fallback;
+    GEO_CACHE.set(key, point);
+    return point;
+  } catch (_) {
+    GEO_CACHE.set(key, null);
+    return null;
+  }
+}
 function routeMap(records, id) {
-  const routes = records.filter(r => r.record_type === "shipment" && geoPoint(r.origin) && geoPoint(r.destination)).slice(0, 6);
+  const routes = records.filter(r => r.record_type === "shipment" && r.origin && r.destination).slice(0, 6);
   const routeList = routes.map(r => `<li><span>${esc(r.origin)}</span><i></i><span>${esc(r.destination)}</span>${r.reference ? `<b>${esc(r.reference)}</b>` : ""}</li>`).join("");
   return `<section class="map-card">
     <div class="map-head"><div>${eyebrow("Shipment routes")}<h2>Global flow</h2></div><span class="map-key"><i></i> Documented locations</span></div>
@@ -252,13 +281,14 @@ async function mountShipmentMaps(uploads) {
     for (const item of uploads) {
       const container = document.getElementById(`shipment-map-${item.id}`);
       if (!container) continue;
-      const routes = (item.analysis.records || []).filter(r => r.record_type === "shipment" && geoPoint(r.origin) && geoPoint(r.destination)).slice(0, 6);
-      const features = routes.flatMap(r => {
-        const a = geoPoint(r.origin), b = geoPoint(r.destination);
+      const routes = (item.analysis.records || []).filter(r => r.record_type === "shipment" && r.origin && r.destination).slice(0, 6);
+      const resolved = (await Promise.all(routes.map(async r => ({ record: r, a: await resolveGeoPoint(r.origin), b: await resolveGeoPoint(r.destination) })))).filter(r => r.a && r.b);
+      const features = resolved.flatMap(({ record: r, a, b }) => {
         return [{ type: "Feature", properties: { kind: "route", reference: r.reference || "Shipment" }, geometry: { type: "LineString", coordinates: [[a[1], a[2]], [b[1], b[2]]] } },
           { type: "Feature", properties: { kind: "point", label: r.origin }, geometry: { type: "Point", coordinates: [a[1], a[2]] } },
           { type: "Feature", properties: { kind: "point", label: r.destination }, geometry: { type: "Point", coordinates: [b[1], b[2]] } }];
       });
+      if (!features.length) { container.innerHTML = `<div class="map-setup"><b>Locations found, but not mappable</b><span>Mapbox could not resolve the printed port locations. The route is still shown above.</span></div>`; continue; }
       const map = new mapboxgl.Map({ accessToken: S.mapboxToken, container, style: "mapbox://styles/mapbox/dark-v11", center: [8, 25], zoom: 1.25, attributionControl: true });
       map.on("load", () => {
         map.addSource("shipments", { type: "geojson", data: { type: "FeatureCollection", features } });
@@ -580,8 +610,9 @@ async function obligationItem(o, withActions) {
 async function pageMemo() {
   if (!S.workspaceId) return `${eyebrow("TODO")}<h1>Choose a document set first</h1><a class="btn primary" href="#documents">Back to desktop</a>`;
   const result = await get(`/todo?workspace_id=${encodeURIComponent(S.workspaceId)}`);
-  const rows = result.todos || [];
-  const body = rows.map((row, index) => `<article class="todo-item"><div class="todo-check" aria-hidden="true"></div><div><h3>${index + 1}. ${esc(row.task)}</h3><p>${esc(row.reason)}</p><small>${esc(row.source_file)} · page ${esc(row.page)}${row.amount_usd ? ` · $${Number(row.amount_usd).toLocaleString("en-US", {minimumFractionDigits: 2})}` : ""}</small></div></article>`).join("");
+  S.todos = result.todos || [];
+  const rows = S.todos;
+  const body = rows.map((row, index) => `<article class="todo-item"><div class="todo-check" aria-hidden="true"></div><div><h3>${index + 1}. ${esc(row.task)}</h3><small>To: ${esc(row.recipient || "contact not identified")} · ${esc(row.source_file)} · page ${esc(row.page)}${row.amount_usd ? ` · EUR ${Number(row.amount_usd).toLocaleString("en-US", {minimumFractionDigits: 2})}` : ""}</small><details><summary>View suggested email</summary><label>Subject</label><input class="todo-subject" readonly value="${esc(row.email_subject || row.task)}"><label>Draft</label><textarea class="todo-email" readonly>${esc(row.email_body || "")}</textarea><button class="btn" data-copy-email="${index}">Copy email</button><span class="copy-status" id="copy-status-${index}"></span></details><p class="todo-reason">Evidence: ${esc(row.reason)}</p></div></article>`).join("");
   const set = S.documentSets.find(x => x.id === S.workspaceId);
   return `${eyebrow(`TODO · ${set?.name || "document set"}`)}
     <div class="page-head"><div><h1>Secretary TODO</h1><p class="lede">Small tasks linked to the evidence in this document set.</p></div><div class="btn-row"><a class="btn" href="/todo.pdf?workspace_id=${encodeURIComponent(S.workspaceId)}" download>PDF</a><a class="btn primary" href="/todo.xlsx?workspace_id=${encodeURIComponent(S.workspaceId)}" download>Excel</a></div></div>
@@ -694,6 +725,16 @@ document.addEventListener("click", async e => {
       S.workspaceId = null;
       location.hash = "#documents";
     });
+  }
+  const copyEmail = e.target.closest("[data-copy-email]");
+  if (copyEmail) {
+    const index = Number(copyEmail.dataset.copyEmail);
+    const row = (S.todos || [])[index];
+    if (!row) return;
+    const text = `Subject: ${row.email_subject || row.task}\n\n${row.email_body || ""}`;
+    try { await navigator.clipboard.writeText(text); document.getElementById(`copy-status-${index}`).textContent = "Copied"; }
+    catch (_) { document.getElementById(`copy-status-${index}`).textContent = "Select and copy manually"; }
+    return;
   }
   const cancelSet = e.target.closest("[data-new-set-cancel]");
   if (cancelSet) { document.getElementById("set-dialog").close(); return; }

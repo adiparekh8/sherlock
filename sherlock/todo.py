@@ -2,19 +2,16 @@
 
 from __future__ import annotations
 
-import csv
 import io
-import json
 import re
 import textwrap
 import zipfile
 from html import escape
-from pathlib import Path
 
 from fpdf import FPDF
 
 
-TODO_COLUMNS = ["task", "reason", "source_file", "page", "amount_usd", "status"]
+TODO_COLUMNS = ["task", "recipient", "email_subject", "email_body", "reason", "source_file", "page", "amount_usd", "status"]
 
 
 def _party(records: list[dict]) -> str:
@@ -29,6 +26,21 @@ def _reason(record: dict, fallback: str) -> str:
     return str(record.get("evidence") or fallback or "Evidence needs review in the source PDF.")
 
 
+def _email(task: str, recipient: str, reason: str, amount_usd: float | str) -> tuple[str, str]:
+    subject = task
+    amount = f"EUR {amount_usd:,.2f}" if isinstance(amount_usd, (int, float)) and amount_usd else "the amount shown in the packet"
+    if task.startswith("Communication"):
+        ask = f"Please confirm the status of the refund or credit for {amount}, and let us know if any action is still needed from our team."
+    elif task.startswith("Confirm payment"):
+        ask = f"Please confirm whether payment of {amount} has been completed and share the payment reference if available."
+    else:
+        ask = "Could you please send the missing document or detail, or let us know where we can retrieve it?"
+    body = (f"Hi {recipient},\n\nWe’re following up on this item from our document review:\n\n"
+            f"{task}\n\nEvidence noted in the packet: {reason}\n\n{ask}\n\n"
+            "Thanks,\n[Your name]")
+    return subject, body
+
+
 def build_todos(uploads: list[dict]) -> list[dict]:
     """Create actionable, evidence-linked tasks without inventing a decision."""
     todos: list[dict] = []
@@ -40,29 +52,37 @@ def build_todos(uploads: list[dict]) -> list[dict]:
         refund_records = [r for r in records if re.search(r"refund|refund notice", _reason(r, summary), re.I)]
         if refund_records or re.search(r"refund", summary, re.I):
             evidence = refund_records[0] if refund_records else {"page": 1, "evidence": summary}
+            task = f"Communication to {party} regarding refund"
+            reason = _reason(evidence, summary)
+            amount_usd = (evidence.get("amount_cents") or 0) / 100
+            subject, body = _email(task, party, reason, amount_usd)
             todos.append({
-                "task": f"Communication to {party} regarding refund",
-                "reason": _reason(evidence, summary),
+                "task": task, "recipient": party, "email_subject": subject, "email_body": body, "reason": reason,
                 "source_file": upload.get("filename", "uploaded PDF"),
                 "page": evidence.get("page") or 1,
-                "amount_usd": (evidence.get("amount_cents") or 0) / 100,
+                "amount_usd": amount_usd,
                 "status": "Open",
             })
         for record in records:
             if record.get("direction") == "money_out":
                 recipient = record.get("counterparty") or party
+                task = f"Confirm payment to {recipient}"
+                reason = _reason(record, summary)
+                amount_usd = (record.get("amount_cents") or 0) / 100
+                subject, body = _email(task, str(recipient), reason, amount_usd)
                 todos.append({
-                    "task": f"Confirm payment to {recipient}",
-                    "reason": _reason(record, summary),
+                    "task": task, "recipient": recipient, "email_subject": subject, "email_body": body, "reason": reason,
                     "source_file": upload.get("filename", "uploaded PDF"),
                     "page": record.get("page") or 1,
-                    "amount_usd": (record.get("amount_cents") or 0) / 100,
+                    "amount_usd": amount_usd,
                     "status": "Open",
                 })
         for missing in analysis.get("missing_links") or []:
+            task = f"Request evidence from {party}"
+            reason = str(missing)
+            subject, body = _email(task, party, reason, "")
             todos.append({
-                "task": f"Request evidence from {party}",
-                "reason": str(missing),
+                "task": task, "recipient": party, "email_subject": subject, "email_body": body, "reason": reason,
                 "source_file": upload.get("filename", "uploaded PDF"),
                 "page": 1,
                 "amount_usd": "",
