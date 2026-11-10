@@ -8,7 +8,6 @@ const PAGES = [
   ["ledger", "Ledger", "M4 5h16 M4 12h16 M4 19h10"],
   ["timeline", "Timeline", "M5 5h14 M5 12h9 M5 19h14 M8 5v14"],
   ["memo", "TODO", "M6 3h9l5 5v13H6z M14 3v6h6 M9 13h6 M9 17h6"],
-  ["export", "Export", "M12 3v12 M7 10l5 5 5-5 M4 19h16"],
 ];
 
 const S = { page: "documents", datasets: [], documentSets: [], workspaceId: null, loaded: null, summary: null, refund: null, threshold: 0.8, actor: "", queueCount: 0, uploads: [], selectedUpload: null };
@@ -107,7 +106,7 @@ function renderTopbar() {
   if (!S.summary) {
     const w = S.workspace;
     const set = S.documentSets.find(x => x.id === S.workspaceId);
-    el.innerHTML = w?.documents ? `<div class="stat"><span>Documents</span><b>${w.documents}</b></div><div class="stat"><span>Money in</span><b>${formatCents(w.moneyIn)}</b></div><div class="stat"><span>Money out</span><b>${formatCents(w.moneyOut)}</b></div><div class="stat"><span>Needs review</span><b>${w.needsReview}</b></div><div class="spacer"></div><div class="stat"><span>Active document set</span><b class="dim">${esc(set?.name || "None")}</b></div>` : `<div class="stat"><span>Active document set</span><b class="dim">${esc(set?.name || "None")}</b></div>`;
+    el.innerHTML = w?.documents ? `<div class="stat"><span>Documents</span><b>${w.documents}</b></div><div class="stat"><span>Money in</span><b>${formatCents(w.moneyIn)}</b></div><div class="stat"><span>Money out</span><b>${formatCents(w.moneyOut)}</b></div><div class="stat pending"><span>Money pending</span><b>${formatCents(w.moneyPending)}</b></div><div class="stat"><span>Needs review</span><b>${w.needsReview}</b></div><div class="spacer"></div><div class="stat"><span>Active document set</span><b class="dim">${esc(set?.name || "None")}</b></div>` : `<div class="stat"><span>Active document set</span><b class="dim">${esc(set?.name || "None")}</b></div>`;
     return;
   }
   const s = S.summary;
@@ -137,7 +136,7 @@ function buildWorkspace(uploads) {
   const amount = direction => records.filter(r => r.direction === direction).reduce((sum, r) => sum + (Number(r.amount_cents) || 0), 0);
   const missing = uploads.flatMap(file => (file.analysis?.missing_links || []).map(text => ({ file: file.filename, text })));
   const incompleteShipments = records.filter(r => r.record_type === "shipment" && (!r.origin || !r.destination));
-  return { documents: uploads.length, records, moneyIn: amount("money_in"), moneyOut: amount("money_out"), missing, incompleteShipments, needsReview: missing.length + incompleteShipments.length };
+  return { documents: uploads.length, records, moneyIn: amount("money_in"), moneyOut: amount("money_out"), moneyPending: amount("unknown"), missing, incompleteShipments, needsReview: missing.length + incompleteShipments.length };
 }
 
 async function refreshSummary() {
@@ -496,7 +495,7 @@ async function pageOverview() {
 function workspaceOverview() {
   const w = S.workspace;
   if (!w.documents) return `${eyebrow("Overview")}<h1>No documents yet</h1>${note("Upload a PDF to start the workspace.")}`;
-  const tiles = [["Documents", w.documents, "", "uploaded packets"], ["Money in", formatCents(w.moneyIn), "money", "printed amounts"], ["Money out", formatCents(w.moneyOut), "money", "printed amounts"], ["Shipment records", w.records.filter(r => r.record_type === "shipment").length, "", "documented routes"], ["Needs review", w.needsReview, w.needsReview ? "warn" : "ok", "missing links or locations"], ["Records", w.records.length, "", "extracted from documents"]].map(([l, v, cls, sub]) => card(`${eyebrow(l)}<b>${v}</b><small>${sub}</small>`, `tile ${cls}`)).join("");
+  const tiles = [["Documents", w.documents, "", "uploaded packets"], ["Money in", formatCents(w.moneyIn), "money", "printed amounts"], ["Money out", formatCents(w.moneyOut), "money", "printed amounts"], ["Shipment records", w.records.filter(r => r.record_type === "shipment").length, "", "documented routes"], ["Needs review", w.needsReview, w.needsReview ? "warn" : "ok", "missing links or locations"], ["Money pending", formatCents(w.moneyPending), "pending-money", "direction still unknown"]].map(([l, v, cls, sub]) => card(`${eyebrow(l)}<b>${v}</b><small>${sub}</small>`, `tile ${cls}`)).join("");
   const set = S.documentSets.find(x => x.id === S.workspaceId);
   return `${eyebrow(`Overview · ${set?.name || "document set"}`)}<div class="page-head"><h1>Document dashboard</h1></div><p class="lede">Every page reads the same uploaded-document set.</p><div class="grid tiles">${tiles}</div><div class="summary-action"><p>${w.needsReview} items need more evidence.</p><a class="btn primary" href="#ledger">Open ledger</a></div>`;
 }

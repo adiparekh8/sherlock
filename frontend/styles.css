@@ -45,6 +45,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .topbar .stat span { font-family: var(--mono); font-size: 10px; letter-spacing: normal; text-transform: none; color: var(--muted); }
 .topbar .stat b { font-family: var(--mono); font-weight: 500; font-size: 13px; font-variant-numeric: tabular-nums; }
 .topbar .stat.money b { color: var(--accent); }
+.topbar .stat.pending b, .tile.pending-money b { color: var(--conflict); }
 .pill { font-family: var(--mono); font-size: 11px; letter-spacing: normal; text-transform: none; padding: 4px 8px; border-radius: 6px; border: 1px solid var(--border); color: var(--text-2); white-space: nowrap; }
 .pill.ok { color: var(--ok); border-color: rgba(61, 220, 151, 0.4); background: rgba(61, 220, 151, 0.08); }
 .pill.bad { color: var(--conflict); border-color: rgba(255, 92, 92, 0.4); background: rgba(255, 92, 92, 0.08); }
