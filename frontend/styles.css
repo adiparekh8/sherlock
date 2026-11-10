@@ -158,7 +158,7 @@ td.num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
 .dataset input:focus { border-color: var(--accent); }
 .dataset.reviewer { margin-top: 18px; }
 .grid.two { grid-template-columns: 1fr 1fr; }
-.tile.ok b { color: var(--ok); } .tile.warn b { color: var(--review); } .tile.bad b { color: var(--conflict); }
+.tile.ok b { color: var(--ok); } .tile.warn b { color: var(--conflict); } .tile.bad b { color: var(--conflict); }
 .sel { height: 32px; background: var(--raised); border: 1px solid var(--border); border-radius: 6px; padding: 0 10px; color: var(--text); font-family: var(--mono); font-size: 12px; }
 .chk { display: inline-flex; align-items: center; gap: 6px; font-family: var(--mono); font-size: 12px; color: var(--text-2); }
 .filters { gap: 8px; }
@@ -263,7 +263,7 @@ details.dataset-details > summary { cursor: pointer; padding: 12px 0; font-weigh
 .flow-dot { width: 9px; height: 9px; position: absolute; left: -29px; top: 12px; border-radius: 50%; background: var(--text-2); border: 2px solid var(--panel); }.flow-node.in .flow-dot { background: var(--ok); }.flow-node.out .flow-dot { background: var(--accent); }.flow-node.unknown .flow-dot { background: var(--review); }
 .flow-line { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: start; }.flow-line div { display: grid; gap: 3px; }.flow-line b { font-size: 13px; }.flow-line small { color: var(--muted); font-family: var(--mono); font-size: 11px; }.flow-line strong { font-family: var(--mono); font-size: 13px; font-weight: 500; white-space: nowrap; }.flow-node p { color: var(--text-2); margin: 7px 0 6px; font-size: 12px; line-height: 1.5; }
 .tree-links { display: flex; gap: 5px; flex-wrap: wrap; }.tree-link { font-family: var(--mono); font-size: 10px; padding: 3px 6px; background: var(--raised); border: 1px solid var(--border); border-radius: 3px; }
-.missing-links { margin-top: 18px; padding: 12px 14px; background: var(--raised); border-left: 2px solid var(--review); }.missing-links b { font-size: 12px; }.missing-links ul { margin: 6px 0 0; padding-left: 17px; color: var(--text-2); font-size: 12px; }.missing-links li { margin: 4px 0; }
+.missing-links { margin-top: 18px; padding: 12px 14px; background: rgba(255,113,113,.08); border-left: 2px solid var(--conflict); }.missing-links b { color: var(--conflict); font-size: 12px; }.missing-links ul { margin: 6px 0 0; padding-left: 17px; color: var(--text-2); font-size: 12px; }.missing-links li { margin: 4px 0; }
 @media (max-width: 700px) { .tree-root { align-items: flex-start; flex-direction: column; }.flow-line { grid-template-columns: 1fr; gap: 5px; }.flow-line strong { margin-left: 0; } }
 
 /* Midnight flow canvas */
@@ -290,7 +290,7 @@ h1 { font-size: clamp(34px, 4vw, 52px); letter-spacing: -.065em; line-height: .9
 .shipment-map .mapboxgl-popup-content { background: #111117; color: var(--text); border: 1px solid #3b3b46; border-radius: 6px; box-shadow: none; font: 11px var(--mono); padding: 8px 10px; }
 .shipment-map .mapboxgl-popup-tip { border-top-color: #111117; border-bottom-color: #111117; }
 .map-setup { height: 100%; display: grid; place-content: center; gap: 8px; padding: 24px; text-align: center; color: var(--text-2); }.map-setup b { color: var(--text); }.map-setup code { color: var(--accent); font-family: var(--mono); font-size: 11px; }
-.workspace-review { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }.workspace-review li { display: grid; gap: 3px; padding: 12px 0; border-bottom: 1px solid var(--border); }.workspace-review li:last-child { border-bottom: 0; }.workspace-review b { font-family: var(--mono); font-size: 11px; color: var(--text); }.workspace-review span { color: var(--text-2); }
+.workspace-review { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }.workspace-review li { display: grid; gap: 3px; padding: 12px 0 12px 12px; border-left: 2px solid var(--conflict); border-bottom: 1px solid var(--border); }.workspace-review li:last-child { border-bottom: 0; }.workspace-review b { font-family: var(--mono); font-size: 11px; color: var(--conflict); }.workspace-review span { color: var(--text-2); }
 
 /* Simple shipment story */
 .timeline-groups .timeline { padding: 26px 24px 26px 80px; }

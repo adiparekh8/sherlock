@@ -106,7 +106,7 @@ function renderTopbar() {
   if (!S.summary) {
     const w = S.workspace;
     const set = S.documentSets.find(x => x.id === S.workspaceId);
-    el.innerHTML = w?.documents ? `<div class="stat"><span>Documents</span><b>${w.documents}</b></div><div class="stat"><span>Money in</span><b>${formatCents(w.moneyIn)}</b></div><div class="stat"><span>Money out</span><b>${formatCents(w.moneyOut)}</b></div><div class="stat pending"><span>Money pending</span><b>${formatCents(w.moneyPending)}</b></div><div class="stat"><span>Needs review</span><b>${w.needsReview}</b></div><div class="spacer"></div><div class="stat"><span>Active document set</span><b class="dim">${esc(set?.name || "None")}</b></div>` : `<div class="stat"><span>Active document set</span><b class="dim">${esc(set?.name || "None")}</b></div>`;
+    el.innerHTML = w?.documents ? `<div class="stat"><span>Documents</span><b>${w.documents}</b></div><div class="stat"><span>Money in</span><b>${formatCents(w.moneyIn)}</b></div><div class="stat"><span>Money out</span><b>${formatCents(w.moneyOut)}</b></div><div class="stat pending"><span>Money pending</span><b>${formatCents(w.moneyPending)}</b></div><div class="stat pending"><span>Needs review</span><b>${w.needsReview}</b></div><div class="spacer"></div><div class="stat"><span>Active document set</span><b class="dim">${esc(set?.name || "None")}</b></div>` : `<div class="stat"><span>Active document set</span><b class="dim">${esc(set?.name || "None")}</b></div>`;
     return;
   }
   const s = S.summary;
