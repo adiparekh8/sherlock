@@ -47,3 +47,13 @@ Put a folder matching `docs/DATA_CONTRACT.md` under `data/` and run `make seed D
 Matching tolerances live in `sherlock/matching/config.py`; the rules in `sherlock/matching/rules.py`.
 
 See `CLAUDE.md` for the architecture and developer workflow, and `docs/SPEC.md` for the brief.
+
+## Additional local review demo
+
+The merged `codex/sherlock-demo` implementation is retained under `app/`, with its own database and test fixtures. The console above remains the primary application. To run the additional demo (stop any other app on port 8000 first):
+
+```sh
+docker compose -f compose.demo.yaml up --build
+```
+
+See [local demo instructions](docs/local-demo.md) for its fixture parser, review workflow, optional AI adapter, and exports. `docker-compose.yml` remains the database configuration used by `make demo`.

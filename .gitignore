@@ -10,3 +10,6 @@ dist/
 build/
 *.egg-info/
 .gstack/
+
+# Generated documents/database for the separate local review demo.
+data/local_demo/
