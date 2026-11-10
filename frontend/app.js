@@ -662,17 +662,24 @@ async function act(fn) {
   catch (e) { document.getElementById("main").insertAdjacentHTML("afterbegin", note(e.message, "error")); window.scrollTo(0, 0); }
 }
 
+function openNewSetDialog() {
+  const dialog = document.getElementById("set-dialog");
+  const input = document.getElementById("set-name");
+  const error = document.getElementById("set-error");
+  error.textContent = "";
+  input.value = "";
+  dialog.showModal();
+  requestAnimationFrame(() => input.focus());
+}
+
 document.addEventListener("click", async e => {
   const newSet = e.target.closest("[data-new-set]");
   if (newSet) {
-    const name = window.prompt("Name this document set");
-    if (!name || !name.trim()) return;
-    try {
-      const created = await post("/workspaces", { name: name.trim() });
-      location.hash = `#workspace/${encodeURIComponent(created.id)}`;
-    } catch (err) { document.getElementById("main").insertAdjacentHTML("afterbegin", note(err.message, "error")); }
+    openNewSetDialog();
     return;
   }
+  const cancelSet = e.target.closest("[data-new-set-cancel]");
+  if (cancelSet) { document.getElementById("set-dialog").close(); return; }
   const choose = e.target.closest("[data-choose-files]");
   if (choose) { document.getElementById("pdf-picker").click(); return; }
   const view = e.target.closest("[data-ledger-view]");
@@ -756,6 +763,27 @@ document.addEventListener("click", async e => {
   if (load) { const name = document.getElementById("dataset").value; return act(async () => { await post(`/datasets/${encodeURIComponent(name)}/seed`); }); }
   const reset = e.target.closest("[data-reset]");
   if (reset) return act(async () => { await post(`/datasets/${encodeURIComponent(reset.dataset.reset)}/seed`); });
+});
+
+document.getElementById("set-form").addEventListener("submit", async e => {
+  e.preventDefault();
+  const input = document.getElementById("set-name");
+  const error = document.getElementById("set-error");
+  const submit = document.getElementById("set-submit");
+  const name = input.value.trim();
+  if (!name) { error.textContent = "Enter a name for this document set."; input.focus(); return; }
+  error.textContent = "";
+  submit.disabled = true;
+  try {
+    const created = await post("/workspaces", { name });
+    document.getElementById("set-dialog").close();
+    location.hash = `#workspace/${encodeURIComponent(created.id)}`;
+  } catch (err) {
+    error.textContent = err.message;
+    input.focus();
+  } finally {
+    submit.disabled = false;
+  }
 });
 
 document.addEventListener("change", e => {

@@ -300,3 +300,23 @@ h1 { font-size: clamp(34px, 4vw, 52px); letter-spacing: -.065em; line-height: .9
 html, body { background: var(--bg); background-image: radial-gradient(circle at 70% -10%, rgba(195,154,108,.09), transparent 28rem); }.sidebar { background: rgba(25,25,25,.9); }.topbar { background: rgba(23,23,23,.82); }.wordmark .mark { box-shadow: 0 0 16px rgba(195,154,108,.4); }.nav a.active { background: linear-gradient(90deg, rgba(195,154,108,.15), transparent); }.nav .count { background: rgba(195,154,108,.13); }.btn.primary:hover { background: #d1ad83; border-color: #d1ad83; }.loading-screen { background: rgba(23,23,23,.9); }.mouse-orbit { border-color: rgba(195,154,108,.72); }.file-icon { border-color: rgba(195,154,108,.38); background: rgba(195,154,108,.1); }.drop-panel { background: linear-gradient(135deg, rgba(195,154,108,.09), rgba(35,34,32,.9)); }.drop-panel:hover,.drop-panel:focus { background: linear-gradient(135deg, rgba(195,154,108,.16), rgba(35,34,32,.95)); }.drop-mark { border-color: rgba(195,154,108,.6); box-shadow: 0 0 22px rgba(195,154,108,.12); }
 .desktop { background-color: #20201f; background-image: radial-gradient(rgba(195,154,108,.19) 1px, transparent 1px); }.desktop-folder:hover { background: rgba(195,154,108,.12); }.folder-icon { background: linear-gradient(145deg, #d1ae85, #9c7048); }.folder-icon:before { background: #b98b61; }.desktop-folder.parent { grid-column: span 2; justify-items: start; text-align: left; padding: 24px; min-height: 150px; align-content: center; }.desktop-folder.parent .folder-icon { width: 112px; height: 78px; }.desktop-folder.parent .folder-icon:before { width: 44px; height: 16px; top: -9px; }.desktop-folder.parent small { max-width: none; }.child-desktop { min-height: 300px; grid-template-columns: repeat(2, minmax(145px, 220px)); }
 @media (max-width: 700px) { .shipment-map { height: 220px; } }
+
+/* Skiper 106-inspired smooth-caret dialog, adapted for this dependency-free UI. */
+.set-dialog { width: min(520px, calc(100vw - 32px)); padding: 0; color: var(--text); background: #151515; border: 1px solid #3e3a35; border-radius: 22px; box-shadow: 0 30px 90px rgba(0,0,0,.62), inset 0 1px rgba(255,255,255,.045); }
+.set-dialog::backdrop { background: rgba(0,0,0,.7); backdrop-filter: blur(7px); }
+.set-dialog form { display: grid; gap: 20px; padding: 30px; }
+.set-dialog-copy .eyebrow { margin: 0 0 12px; color: var(--accent); }
+.set-dialog-copy h2 { margin: 0; font-size: 28px; letter-spacing: -.05em; }
+.set-dialog-copy p:last-child { max-width: 43ch; margin: 10px 0 0; color: var(--text-2); font-size: 14px; line-height: 1.5; }
+.smooth-input { position: relative; display: block; border: 1px solid #37332e; border-radius: 16px; background: #191919; overflow: hidden; transition: border-color 220ms ease, box-shadow 260ms cubic-bezier(.16,1,.3,1), transform 260ms cubic-bezier(.16,1,.3,1); }
+.smooth-input:focus-within { border-color: rgba(195,154,108,.9); box-shadow: 0 0 0 4px rgba(195,154,108,.1), 0 14px 34px rgba(0,0,0,.3); transform: translateY(-1px); }
+.smooth-input input { box-sizing: border-box; width: 100%; height: 68px; padding: 0 22px; border: 0; outline: 0; background: transparent; color: var(--text); font: 500 21px/1 var(--sans); letter-spacing: -.025em; caret-color: var(--accent); }
+.smooth-input input::placeholder { color: #746f68; opacity: 1; }
+.smooth-input i { position: absolute; top: 18px; bottom: 18px; left: 21px; width: 1px; background: var(--accent); opacity: 0; box-shadow: 0 0 10px var(--accent); pointer-events: none; transition: opacity 120ms ease; animation: smooth-caret 1.05s step-end infinite; }
+.smooth-input:focus-within i { opacity: 1; }
+.smooth-input:focus-within input:not(:placeholder-shown) + i { opacity: 0; }
+.set-error { min-height: 17px; margin: -10px 0 0; color: var(--conflict); font: 11px/1.4 var(--mono); }
+.set-dialog-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: -4px; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+@keyframes smooth-caret { 50% { opacity: 0; } }
+@media (max-width: 500px) { .set-dialog form { padding: 24px; }.set-dialog-copy h2 { font-size: 25px; }.smooth-input input { height: 62px; font-size: 18px; }.set-dialog-actions { justify-content: stretch; }.set-dialog-actions .btn { flex: 1; justify-content: center; } }
