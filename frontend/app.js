@@ -252,8 +252,7 @@ async function resolveGeoPoint(place) {
     GEO_CACHE.set(key, point);
     return point;
   } catch (_) {
-    GEO_CACHE.set(key, null);
-    return null;
+    return fallback;
   }
 }
 function routeMap(records, id) {
@@ -284,20 +283,24 @@ async function mountShipmentMaps(uploads) {
       if (!container) continue;
       const routes = (item.analysis.records || []).filter(r => r.record_type === "shipment" && r.origin && r.destination).slice(0, 6);
       const resolved = (await Promise.all(routes.map(async r => ({ record: r, a: await resolveGeoPoint(r.origin), b: await resolveGeoPoint(r.destination) })))).filter(r => r.a && r.b);
+      let routeError = "";
       const features = (await Promise.all(resolved.map(async ({ record: r, a, b }) => {
         try {
           const response = await fetch(`/sea-route?${new URLSearchParams({lon1:a[1],lat1:a[2],lon2:b[1],lat2:b[2]})}`);
-          if (!response.ok) return [];
+          if (!response.ok) {
+            routeError = response.status === 404 ? "Restart the Sherlock server to load sea routing, then refresh this page." : "Sea routing could not complete this request. Please refresh and try again.";
+            return [];
+          }
           const { geometry } = await response.json();
           const coordinates = geometry.coordinates;
           return [{ type: "Feature", properties: { kind: "route", reference: r.reference || "Shipment" }, geometry },
             { type: "Feature", properties: { kind: "point", label: `${r.origin} · estimated sea endpoint` }, geometry: { type: "Point", coordinates: coordinates[0] } },
             { type: "Feature", properties: { kind: "point", label: `${r.destination} · estimated sea endpoint` }, geometry: { type: "Point", coordinates: coordinates[coordinates.length - 1] } }];
-        } catch (_) { return []; }
+        } catch (_) { routeError = "Could not reach the sea-routing service. Check that Sherlock is running, then refresh."; return []; }
       }))).flat();
       if (!container.isConnected) return;
       container.insertAdjacentHTML("afterend", `<p class="map-empty">Estimated sea routes · ${features.length / 3} of ${routes.length} routes shown. Actual vessel paths may differ.</p>`);
-      if (!features.length) { container.innerHTML = `<div class="map-setup"><b>Sea route unavailable</b><span>We could not resolve both locations to a sea route. The printed locations remain below.</span></div>`; continue; }
+      if (!features.length) { container.innerHTML = `<div class="map-setup"><b>Sea route unavailable</b><span>${esc(routeError || "We could not locate both ports. The printed locations remain below.")}</span></div>`; continue; }
       const map = new mapboxgl.Map({ accessToken: S.mapboxToken, container, style: "mapbox://styles/mapbox/dark-v11", center: [8, 25], zoom: 1.25, attributionControl: true });
       map.on("load", () => {
         map.addSource("shipments", { type: "geojson", data: { type: "FeatureCollection", features } });
