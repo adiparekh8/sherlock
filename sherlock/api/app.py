@@ -62,6 +62,7 @@ from sherlock.obligations import obligation_dict
 from sherlock.pipeline import seed as run_seed
 from sherlock.llm import get_llm
 from sherlock.uploads import analyze_pdf
+from sherlock.todo import build_todos, generate_pdf, generate_xlsx
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
@@ -125,6 +126,62 @@ def create_workspace(body: WorkspaceIn):
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(workspaces + [created], indent=2) + "\n")
     return created
+
+
+def _workspace_uploads(workspace_id: str) -> list[dict]:
+    return list_uploads(scope="active", workspace_id=workspace_id)["uploads"]
+
+
+def _workspace(workspace_id: str) -> dict:
+    workspace = next((w for w in _workspaces() if w.get("id") == workspace_id), None)
+    if not workspace:
+        raise HTTPException(404, "document set not found")
+    return workspace
+
+
+@app.delete("/workspaces/{workspace_id}")
+def delete_workspace(workspace_id: str):
+    workspace = _workspace(workspace_id)
+    directory = get_settings().uploaded_documents_dir
+    removed = 0
+    if directory.exists():
+        for path in directory.glob("*.json"):
+            try:
+                upload = json.loads(path.read_text())
+            except json.JSONDecodeError:
+                continue
+            if upload.get("workspace_id") == workspace_id:
+                path.unlink()
+                pdf = directory / f"{path.stem}.pdf"
+                if pdf.exists():
+                    pdf.unlink()
+                removed += 1
+    remaining = [w for w in _workspaces() if w.get("id") != workspace_id]
+    path = _workspace_path()
+    path.write_text(json.dumps(remaining, indent=2) + "\n")
+    return {"deleted": workspace, "uploads_removed": removed}
+
+
+@app.get("/todo")
+def todo(workspace_id: str = Query(...)):
+    _workspace(workspace_id)
+    return {"workspace_id": workspace_id, "todos": build_todos(_workspace_uploads(workspace_id))}
+
+
+@app.get("/todo.pdf")
+def todo_pdf(workspace_id: str = Query(...)):
+    workspace = _workspace(workspace_id)
+    content = generate_pdf(build_todos(_workspace_uploads(workspace_id)))
+    filename = re.sub(r"[^a-z0-9]+", "-", workspace["name"].lower()).strip("-") or "document-set"
+    return Response(content, media_type="application/pdf", headers={"Content-Disposition": f'attachment; filename="{filename}-todo.pdf"'})
+
+
+@app.get("/todo.xlsx")
+def todo_xlsx(workspace_id: str = Query(...)):
+    workspace = _workspace(workspace_id)
+    content = generate_xlsx(build_todos(_workspace_uploads(workspace_id)))
+    filename = re.sub(r"[^a-z0-9]+", "-", workspace["name"].lower()).strip("-") or "document-set"
+    return Response(content, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", headers={"Content-Disposition": f'attachment; filename="{filename}-todo.xlsx"'})
 
 
 @app.get("/uploads")

@@ -6,7 +6,7 @@ const PAGES = [
   ["documents", "Documents", "M6 3h8l4 4v14H6z M14 3v5h5 M9 13h6 M9 17h6"],
   ["overview", "Overview", "M3 3h18v18H3z M3 9h18 M9 21V9"],
   ["ledger", "Ledger", "M4 5h16 M4 12h16 M4 19h10"],
-  ["memo", "Memo", "M6 3h9l5 5v13H6z M14 3v6h6 M9 13h6 M9 17h6"],
+  ["memo", "TODO", "M6 3h9l5 5v13H6z M14 3v6h6 M9 13h6 M9 17h6"],
   ["export", "Export", "M12 3v12 M7 10l5 5 5-5 M4 19h16"],
 ];
 
@@ -105,7 +105,8 @@ function renderTopbar() {
   const el = document.getElementById("topbar");
   if (!S.summary) {
     const w = S.workspace;
-    el.innerHTML = w?.documents ? `<div class="stat"><span>Documents</span><b>${w.documents}</b></div><div class="stat"><span>Money in</span><b>${formatCents(w.moneyIn)}</b></div><div class="stat"><span>Money out</span><b>${formatCents(w.moneyOut)}</b></div><div class="stat"><span>Needs review</span><b>${w.needsReview}</b></div><div class="spacer"></div><div class="stat"><span>Workspace</span><b class="dim">Live</b></div>` : `<div class="stat"><span>Workspace</span><b class="dim">No documents</b></div>`;
+    const set = S.documentSets.find(x => x.id === S.workspaceId);
+    el.innerHTML = w?.documents ? `<div class="stat"><span>Documents</span><b>${w.documents}</b></div><div class="stat"><span>Money in</span><b>${formatCents(w.moneyIn)}</b></div><div class="stat"><span>Money out</span><b>${formatCents(w.moneyOut)}</b></div><div class="stat"><span>Needs review</span><b>${w.needsReview}</b></div><div class="spacer"></div><div class="stat"><span>Active document set</span><b class="dim">${esc(set?.name || "None")}</b></div>` : `<div class="stat"><span>Active document set</span><b class="dim">${esc(set?.name || "None")}</b></div>`;
     return;
   }
   const s = S.summary;
@@ -126,7 +127,8 @@ function renderSidebar() {
     || `<option>no datasets under data/</option>`;
   document.getElementById("reviewer").value = S.actor;
   const d = S.datasets.find(x => x.loaded);
-  document.getElementById("foot").textContent = d ? `${d.name} · ${d.counts.shipments} shipments · ${d.counts.contracts} contracts` : (S.workspace?.documents ? `${S.workspace.documents} uploaded documents · live` : "upload documents to begin");
+  const activeSet = S.documentSets.find(set => set.id === S.workspaceId);
+  document.getElementById("foot").textContent = d ? `${d.name} · ${d.counts.shipments} shipments · ${d.counts.contracts} contracts` : (activeSet ? `${activeSet.name} · ${S.workspace.documents} uploaded documents` : "choose a document set to begin");
 }
 
 function buildWorkspace(uploads) {
@@ -317,7 +319,7 @@ async function pageWorkspace() {
   const set = S.documentSets.find(x => x.id === S.workspaceId);
   if (!set) return `${eyebrow("Documents")}<h1>Document set not found</h1><a class="btn" href="#documents">Back to desktop</a>`;
   return `${eyebrow(`Documents / ${set.name}`)}
-    <div class="page-head"><div><h1>${esc(set.name)}</h1><p class="lede">Files in this set stay together while a worker processes them.</p></div><a class="btn" href="#documents">Back to desktop</a></div>
+    <div class="page-head"><div><h1>${esc(set.name)}</h1><p class="lede">Files in this set stay together while a worker processes them.</p></div><div class="btn-row"><a class="btn" href="#documents">Back to desktop</a><button class="btn danger" data-delete-set="${esc(set.id)}">Delete set</button></div></div>
     <section class="desktop child-desktop" aria-label="Current document set folders">
       ${desktopFolder("Incoming", "Drop PDFs and ZIPs", "#intake", "in")}
       ${desktopFolder("Shipments", `${S.workspace.records.filter(r => r.record_type === "shipment").length} shipment records`, "#ledger", "ship")}
@@ -388,7 +390,8 @@ function workspaceOverview() {
   const w = S.workspace;
   if (!w.documents) return `${eyebrow("Overview")}<h1>No documents yet</h1>${note("Upload a PDF to start the workspace.")}`;
   const tiles = [["Documents", w.documents, "", "uploaded packets"], ["Money in", formatCents(w.moneyIn), "money", "printed amounts"], ["Money out", formatCents(w.moneyOut), "money", "printed amounts"], ["Shipment records", w.records.filter(r => r.record_type === "shipment").length, "", "documented routes"], ["Needs review", w.needsReview, w.needsReview ? "warn" : "ok", "missing links or locations"], ["Records", w.records.length, "", "extracted from documents"]].map(([l, v, cls, sub]) => card(`${eyebrow(l)}<b>${v}</b><small>${sub}</small>`, `tile ${cls}`)).join("");
-  return `${eyebrow("Overview · live workspace")}<div class="page-head"><h1>Document dashboard</h1></div><p class="lede">Every page reads the same uploaded-document workspace.</p><div class="grid tiles">${tiles}</div><div class="summary-action"><p>${w.needsReview} items need more evidence.</p><a class="btn primary" href="#ledger">Open ledger</a></div>`;
+  const set = S.documentSets.find(x => x.id === S.workspaceId);
+  return `${eyebrow(`Overview · ${set?.name || "document set"}`)}<div class="page-head"><h1>Document dashboard</h1></div><p class="lede">Every page reads the same uploaded-document set.</p><div class="grid tiles">${tiles}</div><div class="summary-action"><p>${w.needsReview} items need more evidence.</p><a class="btn primary" href="#ledger">Open ledger</a></div>`;
 }
 
 function datasetPanel() {
@@ -429,7 +432,8 @@ async function pageLedger() {
 function workspaceLedger() {
   const w = S.workspace;
   const rows = w.records.map(r => `<tr><td class="mono">${esc(r.file)}</td><td>${esc(label(r.record_type))}</td><td class="mono">${esc(r.reference || "—")}</td><td>${esc(r.counterparty || "—")}</td><td class="mono">${esc(r.origin || "—")}</td><td class="mono">${esc(r.destination || "—")}</td><td class="num money">${r.amount_cents === null ? "—" : formatCents(r.amount_cents)}</td><td>${status(r.direction === "unknown" ? "pending_review" : r.direction, r.direction === "money_in" ? "ok" : r.direction === "money_out" ? "auto" : "review")}</td></tr>`).join("");
-  return `${eyebrow("Ledger · live workspace")}<div class="page-head"><h1>Document ledger</h1></div><p class="lede">Records update as soon as a document is analyzed.</p>${table([{label:"document"},{label:"type"},{label:"reference"},{label:"counterparty"},{label:"origin"},{label:"destination"},{label:"amount",num:true},{label:"flow"}], rows)}`;
+  const set = S.documentSets.find(x => x.id === S.workspaceId);
+  return `${eyebrow(`Ledger · ${set?.name || "document set"}`)}<div class="page-head"><h1>Document ledger</h1></div><p class="lede">Records update as soon as a document is analyzed.</p>${table([{label:"document"},{label:"type"},{label:"reference"},{label:"counterparty"},{label:"origin"},{label:"destination"},{label:"amount",num:true},{label:"flow"}], rows)}`;
 }
 
 function ledgerTable(rows) {
@@ -574,12 +578,14 @@ async function obligationItem(o, withActions) {
 // --------------------------------------------------------------------------- memo + export
 
 async function pageMemo() {
-  if (!S.loaded) return `${eyebrow("Memo")}<h1>No dataset loaded</h1>`;
-  const text = await get("/memo");
-  const html = window.marked ? marked.parse(text) : `<pre>${esc(text)}</pre>`;
-  return `${eyebrow("Reports")}
-    <div class="page-head"><h1>Audit memo</h1><a class="btn" href="/memo" download="sherlock_audit_memo.md">Download .md</a></div>
-    ${card(`<div class="memo">${html}</div>`)}`;
+  if (!S.workspaceId) return `${eyebrow("TODO")}<h1>Choose a document set first</h1><a class="btn primary" href="#documents">Back to desktop</a>`;
+  const result = await get(`/todo?workspace_id=${encodeURIComponent(S.workspaceId)}`);
+  const rows = result.todos || [];
+  const body = rows.map((row, index) => `<article class="todo-item"><div class="todo-check" aria-hidden="true"></div><div><h3>${index + 1}. ${esc(row.task)}</h3><p>${esc(row.reason)}</p><small>${esc(row.source_file)} · page ${esc(row.page)}${row.amount_usd ? ` · $${Number(row.amount_usd).toLocaleString("en-US", {minimumFractionDigits: 2})}` : ""}</small></div></article>`).join("");
+  const set = S.documentSets.find(x => x.id === S.workspaceId);
+  return `${eyebrow(`TODO · ${set?.name || "document set"}`)}
+    <div class="page-head"><div><h1>Secretary TODO</h1><p class="lede">Small tasks linked to the evidence in this document set.</p></div><div class="btn-row"><a class="btn" href="/todo.pdf?workspace_id=${encodeURIComponent(S.workspaceId)}" download>PDF</a><a class="btn primary" href="/todo.xlsx?workspace_id=${encodeURIComponent(S.workspaceId)}" download>Excel</a></div></div>
+    ${card(body || note("No open tasks from the uploaded PDFs."), "todo-list")}`;
 }
 
 async function pageExport() {
@@ -592,7 +598,8 @@ async function pageExport() {
   const owed = pr.reduce((a, r) => a + Number(r.amount_cents || 0), 0);
   return `${eyebrow("Accounting")}
     <div class="page-head"><h1>Exports</h1></div>
-    <p class="lede">Download journal entries and confirmed customer payables. Exports are not posted or sent.</p>
+    <p class="lede">Download journal entries, confirmed customer payables, or the TODO list for this document set.</p>
+    ${S.workspaceId ? card(`${eyebrow("Secretary TODO")}<p class="dim">Export every open task and its PDF evidence reason.</p><div class="btn-row"><a class="btn" href="/todo.pdf?workspace_id=${encodeURIComponent(S.workspaceId)}" download>TODO PDF</a><a class="btn primary" href="/todo.xlsx?workspace_id=${encodeURIComponent(S.workspaceId)}" download>TODO Excel</a></div>`) : ""}
     <div class="grid tiles">
       ${card(`${eyebrow("Journal lines")}<b>${jr.length}</b><small>one cash debit, one credit per ledger line</small>`, "tile")}
       ${card(`${eyebrow("Debits")}<b>${formatCents(deb)}</b>`, "tile money")}
@@ -677,6 +684,16 @@ document.addEventListener("click", async e => {
   if (newSet) {
     openNewSetDialog();
     return;
+  }
+  const deleteSet = e.target.closest("[data-delete-set]");
+  if (deleteSet) {
+    const set = S.documentSets.find(item => item.id === deleteSet.dataset.deleteSet);
+    if (!set || !window.confirm(`Delete “${set.name}” and all PDFs in it? This cannot be undone.`)) return;
+    return act(async () => {
+      await api("DELETE", `/workspaces/${encodeURIComponent(set.id)}`);
+      S.workspaceId = null;
+      location.hash = "#documents";
+    });
   }
   const cancelSet = e.target.closest("[data-new-set-cancel]");
   if (cancelSet) { document.getElementById("set-dialog").close(); return; }
