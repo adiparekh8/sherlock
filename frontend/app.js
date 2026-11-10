@@ -381,7 +381,21 @@ function timelineDate(text) {
 }
 
 function timelineLabel(record) {
-  return ({ shipment: "Shipment documented", invoice: "Invoice recorded", refund: "Refund recorded", credit_memo: "Credit memo recorded", purchase_order: "Purchase order recorded", statement: "Statement recorded", contract: "Contract evidence recorded", claim: "Claim recorded" }[record.record_type] || "Supporting record recorded");
+  return ({ shipment: "Shipping details", invoice: "Bill", refund: "Refund", credit_memo: "Bill adjustment", purchase_order: "Order", statement: "Account summary", contract: "Agreement", claim: "Claim" }[record.record_type] || "Supporting document");
+}
+
+function timelineVisual(record) {
+  const visuals = {
+    shipment: ["▣", "The documents describe this shipment and its route."],
+    invoice: ["▤", "A bill lists the amount charged."],
+    refund: ["↩", "A refund is mentioned. Check the details for its payment status."],
+    credit_memo: ["−", "A document records a reduction to a bill."],
+    purchase_order: ["▢", "An order lists what was requested."],
+    statement: ["≡", "An account summary brings financial records together."],
+    contract: ["◇", "An agreement describes the terms between the parties."],
+    claim: ["!", "A claim describes an issue or a request for money."]
+  };
+  return visuals[record.record_type] || ["·", "Another document adds context to this shipment."];
 }
 
 function timelineGroups(uploads) {
@@ -410,13 +424,14 @@ async function pageTimeline() {
   const groups = timelineGroups(S.uploads);
   const cards = groups.map(group => {
     const s = group.shipment;
-    const events = group.events.map(({ record, date }) => {
+    const events = group.events.map(({ record, date }, index) => {
+      const [icon, description] = timelineVisual(record);
       const refs = (record.related_references || []).filter(Boolean).slice(0, 5).map(ref => `<span>${esc(ref)}</span>`).join("");
-      return `<article class="timeline-event"><div class="timeline-marker"></div><div class="timeline-event-content"><div class="timeline-meta"><span>${date ? esc(date.label) : `Source page ${esc(record.page || "?")}`}</span><span>p.${esc(record.page || "?")}</span></div><h3>${esc(timelineLabel(record))}${record.reference ? ` · ${esc(record.reference)}` : ""}</h3><p>${esc(record.evidence || "No supporting text was returned.")}</p><div class="timeline-detail">${record.amount_cents !== null && record.amount_cents !== undefined ? `<b>${formatCents(record.amount_cents)}</b>` : ""}${record.direction && record.direction !== "unknown" ? `<span>${esc(record.direction.replace("money_", ""))}</span>` : ""}${refs}</div></div></article>`;
+      return `<article class="timeline-event"><div class="timeline-marker" aria-hidden="true">${icon}</div><div class="timeline-event-content"><div class="timeline-meta"><span>${date ? esc(date.label) : "Date unknown"}</span><span>${index + 1} of ${group.events.length}</span></div><h3>${esc(timelineLabel(record))}</h3><p>${description}</p><details class="timeline-evidence"><summary>View details</summary><p>${esc(record.evidence || "No supporting text was returned.")}</p><small>${esc(group.upload.filename)} · page ${esc(record.page || "?")}</small><div class="timeline-detail">${record.reference ? `<span>${esc(record.reference)}</span>` : ""}${refs}</div></details></div></article>`;
     }).join("");
     return `<section class="timeline-card"><div class="timeline-card-head"><div><span class="timeline-file">${esc(group.upload.filename)}</span><h2>${esc(group.ref)}</h2><p>${s.origin && s.destination ? `From <b>${esc(s.origin)}</b> to <b>${esc(s.destination)}</b>` : "Shipment location not fully identified"}</p></div><span class="pill">${group.events.length} events</span></div><div class="timeline">${events || note("No extracted events for this shipment.")}</div></section>`;
   }).join("");
-  return `${eyebrow(`Timeline · ${set?.name || "document set"}`)}<div class="page-head"><div><h1>Shipment timeline</h1><p class="lede">A chronological story for each shipment or parcel in this document set.</p></div></div><p class="timeline-note">Dates come from printed document evidence. When a date is not printed, Sherlock uses source-PDF order and labels the event by page.</p><div class="timeline-groups">${cards}</div>`;
+  return `${eyebrow(`Timeline · ${set?.name || "document set"}`)}<div class="page-head"><div><h1>Your shipment, step by step</h1><p class="lede">Follow the story. Open any step to see the paperwork.</p></div></div><p class="timeline-note">Dated steps appear first. Undated steps follow in document order; their timing is unknown.</p><div class="timeline-groups">${cards}</div>`;
 }
 
 async function pageHistory() {
