@@ -42,7 +42,7 @@ def normalize_documents(session: Session, dataset_dir: Path) -> dict:
                 field_name=f["name"], value_raw=f["quoted_text"], value_norm=f["value"],
                 confidence=f["confidence"], page=f["page"],
                 span_start=span[0] if span else None, span_end=span[1] if span else None,
-                quoted_text=f["quoted_text"], extractor=extractor, prompt_version=CONTRACT_EXTRACT_VERSION,
+                quoted_text=page_text[f["page"]][span[0]:span[1]] if span else f["quoted_text"], extractor=extractor, prompt_version=CONTRACT_EXTRACT_VERSION,
             ))
             n_fields += 1
     session.flush()

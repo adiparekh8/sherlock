@@ -17,6 +17,4 @@ def locate_span(page_text: str, quote: str) -> tuple[int, int] | None:
     m = re.search(r"\s+".join(tokens), page_text)
     if m:
         return m.start(), m.end()
-    # Fall back to the first 8 tokens, which survive most paraphrase/wrap drift.
-    m = re.search(r"\s+".join(tokens[:8]), page_text)
-    return (m.start(), m.end()) if m else None
+    return None

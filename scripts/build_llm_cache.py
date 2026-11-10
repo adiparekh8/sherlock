@@ -11,6 +11,7 @@ existing entries are reused, so only new work hits the API.
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 from pathlib import Path
 
@@ -35,6 +36,8 @@ def main() -> int:
         print("ANTHROPIC_API_KEY is not set. Put it in .env (never commit it) and re-run.", file=sys.stderr)
         return 2
     dataset_dir = resolve_dataset_dir(args.dataset)
+    manifest = json.loads((dataset_dir / "manifest.json").read_text())
+    scan_hints = {scan["file"]: scan.get("hint", "") for scan in manifest.get("scans", [])}
     engine = db.make_engine("sqlite://")
     Base.metadata.create_all(engine)
     db.set_engine(engine)
@@ -55,7 +58,7 @@ def main() -> int:
             elif doc.doc_type == "scan":
                 from sherlock.scans import extract_scan  # imported lazily: Phase 2 module
 
-                res = extract_scan(doc, dataset_dir)
+                res = extract_scan(doc, dataset_dir, scan_hints.get(doc.source_path, ""))
                 print(f"  {res.source:5} {doc.source_path}: {res.output.get('document_type')} "
                       f"{res.output.get('invoice_number', {}).get('value')}")
     print("done. commit llm_cache/ so the no-key demo serves these outputs.")

@@ -3,6 +3,7 @@ __pycache__/
 *.pyc
 .pytest_cache/
 .env
+.sherlock/
 *.db
 *.db-journal
 
@@ -10,3 +11,6 @@ dist/
 build/
 *.egg-info/
 .gstack/
+
+# Generated documents/database for the separate local review demo.
+data/local_demo/

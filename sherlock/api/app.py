@@ -22,12 +22,14 @@ GET  /manifest                              dataset manifest (planted cases pane
 
 from __future__ import annotations
 
+import hashlib
 import json
+import zipfile
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Iterator
 
-from fastapi import Depends, FastAPI, HTTPException, Query
+from fastapi import Depends, FastAPI, HTTPException, Query, Request
 from fastapi.responses import FileResponse, PlainTextResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
@@ -57,6 +59,8 @@ from sherlock.models import (
 )
 from sherlock.obligations import obligation_dict
 from sherlock.pipeline import seed as run_seed
+from sherlock.llm import get_llm
+from sherlock.uploads import analyze_pdf
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
@@ -80,6 +84,68 @@ def config():
     s = get_settings()
     return {"auto_threshold": DEFAULT_CONFIG.auto_threshold, "demo_actor": s.sherlock_demo_actor,
             "model": s.anthropic_model}
+
+
+# --------------------------------------------------------------------------- document intake
+
+
+@app.get("/uploads")
+def list_uploads():
+    directory = get_settings().uploaded_documents_dir
+    if not directory.exists():
+        return {"uploads": []}
+    uploads = []
+    for path in sorted(directory.glob("*.json"), key=lambda p: p.stat().st_mtime, reverse=True):
+        try:
+            uploads.append(json.loads(path.read_text()))
+        except json.JSONDecodeError:
+            continue
+    return {"uploads": uploads}
+
+
+def _pdfs_from_upload(content: bytes, filename: str) -> list[tuple[str, bytes]]:
+    """Accept one PDF or a small ZIP of PDFs, without extracting archive paths to disk."""
+    if content.startswith(b"%PDF-"):
+        return [(filename, content)]
+    if not zipfile.is_zipfile(__import__("io").BytesIO(content)):
+        raise HTTPException(415, "upload a PDF or a ZIP containing PDFs")
+    archive = zipfile.ZipFile(__import__("io").BytesIO(content))
+    files = [info for info in archive.infolist() if not info.is_dir() and info.filename.lower().endswith(".pdf")]
+    if not files:
+        raise HTTPException(422, "ZIP has no PDFs")
+    if len(files) > 12:
+        raise HTTPException(422, "ZIP has more than 12 PDFs; split it into smaller uploads")
+    if sum(info.file_size for info in files) > 50 * 1024 * 1024:
+        raise HTTPException(413, "PDFs inside the ZIP exceed 50 MB")
+    return [(Path(info.filename).name, archive.read(info)) for info in files]
+
+
+@app.post("/uploads")
+async def upload_documents(request: Request):
+    """The browser sends bytes only after the user presses Analyze. Incomplete packets remain useful."""
+    content = await request.body()
+    if len(content) > 30 * 1024 * 1024:
+        raise HTTPException(413, "upload is larger than 30 MB")
+    if not get_llm().has_key:
+        raise HTTPException(422, "Add ANTHROPIC_API_KEY to .env before analyzing documents")
+    filename = Path(request.headers.get("x-filename", "upload")).name or "upload"
+    packets = _pdfs_from_upload(content, filename)
+    directory = get_settings().uploaded_documents_dir
+    directory.mkdir(parents=True, exist_ok=True)
+    uploads = []
+    for pdf_name, pdf in packets:
+        try:
+            analysis = analyze_pdf(pdf, pdf_name)
+        except ValueError as exc:
+            raise HTTPException(422, f"{pdf_name}: {exc}") from exc
+        except Exception as exc:
+            raise HTTPException(502, f"could not analyze {pdf_name}: {exc}") from exc
+        upload_id = hashlib.sha256(pdf).hexdigest()[:16]
+        payload = {"id": upload_id, "filename": pdf_name, "analysis": analysis}
+        (directory / f"{upload_id}.pdf").write_bytes(pdf)
+        (directory / f"{upload_id}.json").write_text(json.dumps(payload, indent=2) + "\n")
+        uploads.append(payload)
+    return {"uploads": uploads}
 
 
 def get_db() -> Iterator[Session]:

@@ -1,0 +1,73 @@
+{
+  "created_at": "2026-11-09T18:37:28.527682+00:00",
+  "model": "claude-haiku-5-5",
+  "output": {
+    "clauses": [
+      {
+        "clause_type": "surcharge_passthrough",
+        "confidence": 0.4,
+        "obligation_strength": "ambiguous",
+        "page": 1,
+        "quoted_text": "Our invoices to you will show, as a separately stated line, the Section 301 duties we actually pay on the goods in each shipment, and that line is due together with the goods.",
+        "reasoning": "The clause bills Section 301 duties to the customer as a separate invoice line but says nothing about who keeps a later duty refund. Refund entitlement is therefore not decided by this clause.",
+        "refund_owed_to_customer": "unclear"
+      },
+      {
+        "clause_type": "refund_obligation",
+        "confidence": 0.93,
+        "obligation_strength": "clear",
+        "page": 1,
+        "quoted_text": "Should the government later return to us any portion of the duties described above, whether through an exclusion, a reliquidation or a drawback claim, the amount returned that relates to goods you purchased will be credited against your next invoice, or paid to you if no invoice is outstanding, within sixty days of our receipt of it.",
+        "reasoning": "The seller must credit or pay to the customer the portion of any returned duties that relates to the customer's goods, within sixty days of receipt. The text uses mandatory 'will be credited' and 'paid to you' language with no discretion.",
+        "refund_owed_to_customer": "yes"
+      }
+    ],
+    "fields": [
+      {
+        "confidence": 0.95,
+        "name": "buyer_name",
+        "page": 1,
+        "quoted_text": "Alder & Finch Distributors",
+        "value": "Alder & Finch Distributors"
+      },
+      {
+        "confidence": 0.95,
+        "name": "seller_name",
+        "page": 1,
+        "quoted_text": "Pacific Crest Imports LLC",
+        "value": "Pacific Crest Imports LLC"
+      },
+      {
+        "confidence": 0.8,
+        "name": "effective_date",
+        "page": 1,
+        "quoted_text": "the program year beginning January 1, 2024",
+        "value": "2024-01-01"
+      },
+      {
+        "confidence": 0.0,
+        "name": "governing_law",
+        "page": 1,
+        "quoted_text": "",
+        "value": ""
+      },
+      {
+        "confidence": 0.0,
+        "name": "payment_terms_days",
+        "page": 1,
+        "quoted_text": "",
+        "value": ""
+      },
+      {
+        "confidence": 0.0,
+        "name": "tariff_clause_heading",
+        "page": 1,
+        "quoted_text": "",
+        "value": ""
+      }
+    ]
+  },
+  "prompt_version": "v1",
+  "source": "api",
+  "task": "contract_extract"
+}

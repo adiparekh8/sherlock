@@ -1,0 +1,64 @@
+{
+  "created_at": "2026-11-09T18:37:06.824023+00:00",
+  "model": "claude-haiku-5-5",
+  "output": {
+    "clauses": [
+      {
+        "clause_type": "refund_obligation",
+        "confidence": 0.9,
+        "obligation_strength": "conditional",
+        "page": 2,
+        "quoted_text": "If the duties, tariffs, or other governmental charges applicable to the products increase after the Effective Date, Buyer shall reimburse Seller for the increase as a separate invoice line. If such charges decrease, or if Seller receives a refund of charges previously reimbursed by Buyer, Seller shall reimburse Buyer for the decrease or refund, net of Seller's reasonable administrative costs not to exceed five percent (5%) of the amount recovered.",
+        "reasoning": "Section 4 states that if Seller receives a refund of charges previously reimbursed by Buyer, Seller shall reimburse Buyer for the refund. The obligation is net of Seller's administrative costs capped at 5% of the amount recovered, so the customer is owed the refund less that deduction. Buyer's reimbursement of tariff increases is also stated as a separate invoice line.",
+        "refund_owed_to_customer": "yes"
+      }
+    ],
+    "fields": [
+      {
+        "confidence": 0.95,
+        "name": "buyer_name",
+        "page": 1,
+        "quoted_text": "Cascade Electric Wholesale (\"Buyer\")",
+        "value": "Cascade Electric Wholesale"
+      },
+      {
+        "confidence": 0.95,
+        "name": "seller_name",
+        "page": 1,
+        "quoted_text": "Pacific Crest Imports LLC, a Washington limited liability company",
+        "value": "Pacific Crest Imports LLC"
+      },
+      {
+        "confidence": 0.97,
+        "name": "effective_date",
+        "page": 1,
+        "quoted_text": "entered into as of May 20, 2023 (the \"Effective Date\")",
+        "value": "2023-05-20"
+      },
+      {
+        "confidence": 0.97,
+        "name": "governing_law",
+        "page": 2,
+        "quoted_text": "This Agreement is governed by the laws of the State of Washington without regard to its conflict of laws rules.",
+        "value": "Washington"
+      },
+      {
+        "confidence": 0.97,
+        "name": "payment_terms_days",
+        "page": 2,
+        "quoted_text": "Buyer shall pay each invoice in full within thirty (30) days of the invoice date.",
+        "value": "30"
+      },
+      {
+        "confidence": 0.97,
+        "name": "tariff_clause_heading",
+        "page": 2,
+        "quoted_text": "4. Changes in Duties",
+        "value": "Changes in Duties"
+      }
+    ]
+  },
+  "prompt_version": "v1",
+  "source": "api",
+  "task": "contract_extract"
+}

@@ -1,0 +1,64 @@
+{
+  "created_at": "2026-11-09T18:36:38.470142+00:00",
+  "model": "claude-haiku-5-5",
+  "output": {
+    "clauses": [
+      {
+        "clause_type": "surcharge_passthrough",
+        "confidence": 0.3,
+        "obligation_strength": "ambiguous",
+        "page": 2,
+        "quoted_text": "4. Price Adjustments Seller may, at its reasonable discretion, adjust prices to reflect material changes in duties, tariffs, freight, or similar governmental charges affecting the products. Seller will notify Buyer of any such adjustment. The parties will cooperate in good faith with respect to any subsequent change in such charges, including any reduction, and will discuss appropriate adjustments to pricing at that time.",
+        "reasoning": "Section 4 lets Seller adjust prices for tariff changes at its reasonable discretion, which is a surcharge pass-through right. The later good-faith and discuss language on any reduction does not state that a tariff refund must be passed to Buyer, so whether a refund is owed is unresolved.",
+        "refund_owed_to_customer": "unclear"
+      }
+    ],
+    "fields": [
+      {
+        "confidence": 0.97,
+        "name": "buyer_name",
+        "page": 1,
+        "quoted_text": "Harbor & Vale Supply LLC (\"Buyer\")",
+        "value": "Harbor & Vale Supply LLC"
+      },
+      {
+        "confidence": 0.97,
+        "name": "seller_name",
+        "page": 1,
+        "quoted_text": "Pacific Crest Imports LLC, a Washington limited liability company",
+        "value": "Pacific Crest Imports LLC"
+      },
+      {
+        "confidence": 0.97,
+        "name": "effective_date",
+        "page": 1,
+        "quoted_text": "entered into as of November 01, 2022 (the \"Effective Date\")",
+        "value": "2022-11-01"
+      },
+      {
+        "confidence": 0.97,
+        "name": "governing_law",
+        "page": 2,
+        "quoted_text": "This Agreement is governed by the laws of the State of Washington without regard to its conflict of laws rules.",
+        "value": "Washington"
+      },
+      {
+        "confidence": 0.97,
+        "name": "payment_terms_days",
+        "page": 2,
+        "quoted_text": "Buyer shall pay each invoice in full within thirty (30) days of the invoice date.",
+        "value": "30"
+      },
+      {
+        "confidence": 0.95,
+        "name": "tariff_clause_heading",
+        "page": 2,
+        "quoted_text": "4. Price Adjustments",
+        "value": "4. Price Adjustments"
+      }
+    ]
+  },
+  "prompt_version": "v1",
+  "source": "api",
+  "task": "contract_extract"
+}

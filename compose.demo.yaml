@@ -1,0 +1,37 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: sherlock
+      POSTGRES_USER: sherlock
+      POSTGRES_PASSWORD: local-demo-only
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -U sherlock"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+    volumes:
+      - postgres:/var/lib/postgresql/data
+  app:
+    build: .
+    ports: ["127.0.0.1:8000:8000"]
+    environment:
+      SHERLOCK_LOCAL_DATABASE_URL: postgresql+psycopg://sherlock:local-demo-only@db/sherlock
+      SHERLOCK_LOCAL_DATA_DIR: /app/data
+      SEED_DEMO: ${SEED_DEMO:-1}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_MODEL: ${OPENAI_MODEL:-}
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+      start_period: 30s
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - documents:/app/data
+volumes:
+  postgres:
+  documents:

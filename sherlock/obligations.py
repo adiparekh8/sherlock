@@ -32,16 +32,17 @@ def extract_obligations(session: Session, dataset_dir: Path | None = None) -> di
             if clause["clause_type"] not in CANDIDATE_TYPES:
                 continue
             span = locate_span(page_text.get(clause["page"], ""), clause["quoted_text"])
+            quote = page_text[clause["page"]][span[0]:span[1]] if span else clause["quoted_text"]
             session.add(CandidateObligation(
                 customer_id=doc.customer_id, contract_document_id=doc.id, clause_type=clause["clause_type"],
-                page=clause["page"], quoted_text=clause["quoted_text"],
+                page=clause["page"], quoted_text=quote,
                 span_start=span[0] if span else None, span_end=span[1] if span else None,
                 confidence=clause["confidence"], reasoning=clause["reasoning"],
                 obligation_strength=clause["obligation_strength"],
                 refund_owed_to_customer=clause["refund_owed_to_customer"],
                 status=ObligationStatus.PENDING_REVIEW.value,
                 evidence=[{"source": doc.source_path, "locator": f"page {clause['page']}", "entity": "contract",
-                           "key": doc.customer_id, "document_id": doc.id, "quoted_text": clause["quoted_text"]}],
+                           "key": doc.customer_id, "document_id": doc.id, "quoted_text": quote}],
             ))
             created += 1
     session.flush()

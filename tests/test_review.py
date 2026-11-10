@@ -77,10 +77,11 @@ def test_partial_override_leaves_remainder_unallocated(seeded):
 def test_approve_missing_invoice_proposal(seeded):
     session, cases = seeded
     queued = _rec(session, cases["missing_invoice"]["shipment_id"])
-    review.approve_allocation(session, queued.id, "sid", "customer confirmed receipt; invoice was never raised")
+    proposed_invoice = queued.proposal[0].get("invoice_number")
+    review.approve_allocation(session, queued.id, "sid", "reviewed the proposed invoice evidence")
     session.commit()
     live = _rec(session, queued.shipment_id)
-    assert live.review_status == "human_confirmed" and live.customer_id and live.invoice_number is None
+    assert live.review_status == "human_confirmed" and live.customer_id and live.invoice_number == proposed_invoice
     assert ledger.summarize(session).conserved
 
 

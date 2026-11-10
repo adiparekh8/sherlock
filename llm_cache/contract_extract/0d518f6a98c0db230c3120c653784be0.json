@@ -1,0 +1,64 @@
+{
+  "created_at": "2026-11-09T18:36:52.304847+00:00",
+  "model": "claude-haiku-5-5",
+  "output": {
+    "clauses": [
+      {
+        "clause_type": "refund_obligation",
+        "confidence": 0.93,
+        "obligation_strength": "clear",
+        "page": 2,
+        "quoted_text": "In addition to the unit price, Seller shall invoice a Tariff Recovery Charge equal to the duties assessed by U.S. Customs and Border Protection on the products delivered under the applicable Order. Should any portion of such duties later be refunded to Seller, whether through exclusion, reliquidation, or protest, Seller shall credit Buyer's account for the refunded portion attributable to Buyer's Orders within sixty (60) days after Seller's receipt of the refund. Credits shall be documented with reference to the affected invoices.",
+        "reasoning": "Section 4 bills customers a Tariff Recovery Charge equal to duties, so the customer bears the tariff as a surcharge. It states that Seller shall credit Buyer's account for any refunded portion of such duties attributable to Buyer's Orders within sixty days of receipt, which is an unconditional duty to pass the refund through.",
+        "refund_owed_to_customer": "yes"
+      }
+    ],
+    "fields": [
+      {
+        "confidence": 0.95,
+        "name": "buyer_name",
+        "page": 1,
+        "quoted_text": "Summit Lighting Group (\"Buyer\")",
+        "value": "Summit Lighting Group"
+      },
+      {
+        "confidence": 0.97,
+        "name": "seller_name",
+        "page": 1,
+        "quoted_text": "Pacific Crest Imports LLC, a Washington limited liability company with offices at 4120 Harbor Way, Suite 300, Tacoma, WA 98421 (\"Seller\")",
+        "value": "Pacific Crest Imports LLC"
+      },
+      {
+        "confidence": 0.98,
+        "name": "effective_date",
+        "page": 1,
+        "quoted_text": "entered into as of September 01, 2023 (the \"Effective Date\")",
+        "value": "2023-09-01"
+      },
+      {
+        "confidence": 0.97,
+        "name": "governing_law",
+        "page": 2,
+        "quoted_text": "This Agreement is governed by the laws of the State of Washington without regard to its conflict of laws rules.",
+        "value": "Washington"
+      },
+      {
+        "confidence": 0.97,
+        "name": "payment_terms_days",
+        "page": 2,
+        "quoted_text": "Buyer shall pay each invoice in full within thirty (30) days of the invoice date.",
+        "value": "30"
+      },
+      {
+        "confidence": 0.97,
+        "name": "tariff_clause_heading",
+        "page": 2,
+        "quoted_text": "4. Tariff Recovery Charge",
+        "value": "Tariff Recovery Charge"
+      }
+    ]
+  },
+  "prompt_version": "v1",
+  "source": "api",
+  "task": "contract_extract"
+}
