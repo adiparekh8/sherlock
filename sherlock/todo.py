@@ -14,7 +14,7 @@ from fpdf import FPDF
 import requests
 
 
-TODO_COLUMNS = ["task", "recipient", "email_subject", "email_body", "reason", "source_file", "page", "currency", "amount_original", "amount_usd", "fx_rate", "fx_rate_date", "status"]
+TODO_COLUMNS = ["task", "urgency", "recipient", "email_subject", "email_body", "reason", "source_file", "page", "currency", "amount_original", "amount_usd", "fx_rate", "fx_rate_date", "status"]
 
 
 def _party(records: list[dict]) -> str:
@@ -66,6 +66,20 @@ def _amount_phrase(money: dict) -> str:
     return f"{original} (approximately USD ${money['amount_usd']:,.2f} at {money['fx_rate']} on {money['fx_rate_date']})"
 
 
+def _urgency(task: str, reason: str) -> str:
+    """Give the secretary a small, understandable priority signal."""
+    text = f"{task} {reason}".lower()
+    if task.startswith(("Communication", "Confirm payment")) or re.search(
+        r"refund|payment|settlement|credit memo|due|deadline", text
+    ):
+        return "high"
+    if task.startswith("Request evidence") or re.search(
+        r"missing|absent|not printed|not included|unable to verify", text
+    ):
+        return "medium"
+    return "low"
+
+
 def _email(task: str, recipient: str, reason: str, money: dict, source_file: str, page: int) -> tuple[str, str]:
     subject = task
     amount = _amount_phrase(money)
@@ -101,6 +115,7 @@ def build_todos(uploads: list[dict]) -> list[dict]:
             subject, body = _email(task, party, reason, money, source_file, page)
             todos.append({
                 "task": task, "recipient": party, "email_subject": subject, "email_body": body, "reason": reason,
+                "urgency": _urgency(task, reason),
                 "source_file": source_file,
                 "page": page,
                 **money,
@@ -116,6 +131,7 @@ def build_todos(uploads: list[dict]) -> list[dict]:
                 subject, body = _email(task, str(recipient), reason, money, source_file, page)
                 todos.append({
                     "task": task, "recipient": recipient, "email_subject": subject, "email_body": body, "reason": reason,
+                    "urgency": _urgency(task, reason),
                     "source_file": source_file,
                     "page": page,
                     **money,
@@ -127,12 +143,15 @@ def build_todos(uploads: list[dict]) -> list[dict]:
             subject, body = _email(task, party, reason, _money(None, "USD"), source_file, 1)
             todos.append({
                 "task": task, "recipient": party, "email_subject": subject, "email_body": body, "reason": reason,
+                "urgency": _urgency(task, reason),
                 "source_file": source_file,
                 "page": 1,
                 "amount_usd": "",
                 "status": "Open",
             })
-    return todos
+    priority = {"high": 0, "medium": 1, "low": 2}
+    ranked = sorted(enumerate(todos), key=lambda pair: (priority.get(pair[1].get("urgency", "medium"), 1), pair[0]))
+    return [row for _, row in ranked[:5]]
 
 
 def _xml_cell(value: object) -> str:
@@ -179,12 +198,13 @@ def generate_pdf(rows: list[dict]) -> bytes:
             return textwrap.fill(text, width=100, break_long_words=True, break_on_hyphens=True)
 
         task = printable(row.get("task", ""))
+        urgency = printable(str(row.get("urgency", "medium")).title())
         reason = printable(row.get("reason", ""))
         source = printable(f"{row.get('source_file', '')} p.{row.get('page', '')}")
         width = pdf.w - pdf.l_margin - pdf.r_margin
         pdf.set_font("Helvetica", "B", 10)
         pdf.set_x(pdf.l_margin)
-        pdf.multi_cell(width, 6, f"{index}. {task}")
+        pdf.multi_cell(width, 6, f"{index}. [{urgency} priority] {task}")
         pdf.set_font("Helvetica", "", 9)
         pdf.set_x(pdf.l_margin)
         pdf.multi_cell(width, 5, f"Why: {reason}")
