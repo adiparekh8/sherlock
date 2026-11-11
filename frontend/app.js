@@ -18,7 +18,7 @@ const COUNTRIES = [
   ["CH", "Switzerland", "CHF", "🇨🇭"], ["CN", "China", "CNY", "🇨🇳"], ["IN", "India", "INR", "🇮🇳"],
   ["MX", "Mexico", "MXN", "🇲🇽"], ["SG", "Singapore", "SGD", "🇸🇬"]
 ];
-const S = { page: "documents", datasets: [], documentSets: [], workspaceId: null, loaded: null, summary: null, threshold: 0.8, actor: "", queueCount: 0, uploads: [], selectedUpload: null, country: "US", currency: "USD", fxRate: 1, fxDate: "" };
+const S = { page: "documents", datasets: [], documentSets: [], workspaceId: null, loaded: null, summary: null, threshold: 0.8, actor: "", queueCount: 0, uploads: [], selectedUpload: null, country: "US", currency: "USD", fxRate: 1, fxDate: "", loadingMessage: "" };
 
 // --------------------------------------------------------------------------- helpers
 
@@ -54,17 +54,18 @@ function label(s) {
 function status(s, cls) { return `<span class="status ${cls ?? tone(s)}">${esc(label(s))}</span>`; }
 function eyebrow(text, style = "") { return `<span class="eyebrow" style="${style}">${esc(text)}</span>`; }
 function card(inner, cls = "", attrs = "") { return `<section class="card ${cls}" ${attrs}>${inner}</section>`; }
-function progress(on) {
+function progress(on, message) {
   document.getElementById("progress").className = on ? "on" : "done";
   document.body.classList.toggle("is-loading", on);
+  document.querySelector("#loading-screen .loading-copy b").textContent = message || S.loadingMessage || "Sherlock is searching";
   document.getElementById("loading-screen").setAttribute("aria-hidden", String(!on));
 }
 function note(text, cls = "empty") { return `<div class="${cls}">${esc(text)}</div>`; }
 
 let inflight = 0;
 let renderVersion = 0;
-async function api(method, path, body) {
-  inflight++; progress(true);
+async function api(method, path, body, loadingMessage) {
+  inflight++; progress(true, loadingMessage);
   try {
     const r = await fetch(path, { method, headers: body ? { "content-type": "application/json" } : {}, body: body ? JSON.stringify(body) : undefined });
     if (!r.ok) {
@@ -78,8 +79,8 @@ async function api(method, path, body) {
     if (--inflight === 0) progress(false);
   }
 }
-const get = p => api("GET", p);
-const post = (p, b) => api("POST", p, b || {});
+const get = (p, loadingMessage) => api("GET", p, undefined, loadingMessage);
+const post = (p, b, loadingMessage) => api("POST", p, b || {}, loadingMessage);
 async function upload(file) {
   inflight++; progress(true);
   try {
@@ -119,7 +120,7 @@ function renderTopbar() {
     const set = S.documentSets.find(x => x.id === S.workspaceId);
     const sets = `<select class="topbar-set-select" id="active-set-select" aria-label="Active document set"><option value="${set ? esc(set.id) : ""}">${set ? esc(set.name) : "Choose document set"}</option>${S.documentSets.filter(x => x.id !== S.workspaceId).map(x => `<option value="${esc(x.id)}">${esc(x.name)}</option>`).join("")}</select>`;
     const countries = COUNTRIES.map(([code, name, currency, flag]) => `<button type="button" class="country-option" data-country="${code}" data-currency="${currency}"><span>${flag}</span><span>${esc(name)}</span><small>${currency}</small></button>`).join("");
-    const tools = `<div class="topbar-tools"><form class="watson-bar" id="watson-form"><span class="watson-mark">✦</span><input id="watson-question" ${S.workspaceId ? "" : "disabled"} placeholder="Ask Claude Dr. Watson…" aria-label="Ask Claude Dr. Watson"><button type="submit" ${S.workspaceId ? "" : "disabled"}>Ask</button><div id="watson-answer" class="watson-answer" hidden></div></form><details class="country-picker"><summary><span>${COUNTRIES.find(x => x[0] === S.country)?.[3] || "🌐"}</span> ${S.currency}</summary><div class="country-menu"><input type="search" id="country-search" placeholder="Search country or currency" aria-label="Search country or currency"><div id="country-options">${countries}</div></div></details>${sets}</div>`;
+    const tools = `<div class="topbar-tools"><form class="watson-bar" id="watson-form"><span class="watson-mark">✦</span><input id="watson-question" ${S.workspaceId ? "" : "disabled"} placeholder="Ask Dr. Watson…" aria-label="Ask Dr. Watson"><button type="submit" ${S.workspaceId ? "" : "disabled"}>Ask</button><div id="watson-answer" class="watson-answer" hidden></div></form><details class="country-picker"><summary><span>${COUNTRIES.find(x => x[0] === S.country)?.[3] || "🌐"}</span> ${S.currency}</summary><div class="country-menu"><input type="search" id="country-search" placeholder="Search country or currency" aria-label="Search country or currency"><div id="country-options">${countries}</div></div></details>${sets}</div>`;
     el.innerHTML = w?.documents ? `<div class="stat"><span>Documents</span><b>${w.documents}</b></div><div class="stat"><span>Money in</span><b>${formatCents(w.moneyIn)}</b></div><div class="stat"><span>Money out</span><b>${formatCents(w.moneyOut)}</b></div><div class="stat pending"><span>Money pending</span><b>${formatCents(w.moneyPending)}</b></div><div class="stat pending"><span>Needs review</span><b>${w.needsReview}</b></div><div class="spacer"></div>${tools}` : `<div class="spacer"></div>${tools}`;
     return;
   }
@@ -136,14 +137,19 @@ function renderTopbar() {
 }
 
 async function setCurrency(code, country = S.country) {
-  const result = await get(`/fx-rate?currency=${encodeURIComponent(code)}`);
-  S.country = country || COUNTRIES.find(x => x[2] === result.currency)?.[0] || "US";
-  S.currency = result.currency;
-  S.fxRate = Number(result.rate) || 1;
-  S.fxDate = result.date || "";
-  try { localStorage.setItem("sherlock.currency", S.currency); localStorage.setItem("sherlock.country", S.country); } catch (_) { /* private mode */ }
-  renderTopbar();
-  await render();
+  S.loadingMessage = "Currency changing";
+  try {
+    const result = await get(`/fx-rate?currency=${encodeURIComponent(code)}`);
+    S.country = country || COUNTRIES.find(x => x[2] === result.currency)?.[0] || "US";
+    S.currency = result.currency;
+    S.fxRate = Number(result.rate) || 1;
+    S.fxDate = result.date || "";
+    try { localStorage.setItem("sherlock.currency", S.currency); localStorage.setItem("sherlock.country", S.country); } catch (_) { /* private mode */ }
+    renderTopbar();
+    await render();
+  } finally {
+    S.loadingMessage = "";
+  }
 }
 
 async function askWatson(question) {
@@ -152,10 +158,10 @@ async function askWatson(question) {
   if (!answer || !S.workspaceId) return;
   answer.hidden = false;
   answer.className = "watson-answer loading";
-  answer.textContent = "Dr. Watson is reading this document set…";
+  answer.textContent = "Watson is searching";
   if (button) button.disabled = true;
   try {
-    const result = await post("/chat", { workspace_id: S.workspaceId, question });
+    const result = await post("/chat", { workspace_id: S.workspaceId, question }, "Watson is searching");
     const sources = (result.sources || []).map(source => `<li>${esc(source.file)} · page ${esc(source.page)}${source.quote ? ` — ${esc(source.quote)}` : ""}</li>`).join("");
     answer.className = "watson-answer";
     answer.innerHTML = `<b>Dr. Watson</b><p>${esc(result.answer)}</p>${sources ? `<small>Sources</small><ul>${sources}</ul>` : ""}`;
