@@ -137,6 +137,13 @@ class ChatIn(BaseModel):
     question: str = Field(min_length=1, max_length=2000)
 
 
+def _concise_answer(text: str, limit: int = 150) -> str:
+    words = str(text or "").split()
+    if len(words) <= limit:
+        return " ".join(words)
+    return " ".join(words[:limit]).rstrip(".,;:") + "…"
+
+
 @app.get("/workspaces")
 def list_workspaces():
     return {"workspaces": _workspaces()}
@@ -202,14 +209,16 @@ def chat(body: ChatIn):
     system = ("You are Claude Dr. Watson, Sherlock's careful finance and shipment assistant. "
               "Answer only from the uploaded document set context. Do not invent facts. "
               "If the documents do not establish an answer, say what is unknown and what evidence is needed. "
-              "Use plain language. When answering, cite the relevant filename and page through the sources list. "
+              "Use simple English for a fourth-grade reader. Be brief: answer in 2 to 5 short sentences, "
+              "with no more than 3 key facts and no long lists. Do not overwhelm the reader with extra specifics. "
+              "Keep the answer under 150 words. Cite the relevant filename and page through the sources list. "
               "Amounts are printed values unless the context explicitly includes a conversion.")
     user = f"Question:\n{body.question.strip()}\n\nUploaded document set context:\n{json.dumps(context, ensure_ascii=False, default=str)[:60000]}"
     try:
         result = get_llm().complete_json("chat", "chat-v1", system, user, stub_input=body.question)
     except Exception as exc:
         raise HTTPException(502, f"Claude Dr. Watson could not answer: {exc}") from exc
-    return {"answer": result.output["answer"], "sources": result.output.get("sources", []), "model": result.model, "source": result.source}
+    return {"answer": _concise_answer(result.output["answer"]), "sources": result.output.get("sources", [])[:3], "model": result.model, "source": result.source}
 
 
 def _workspace_uploads(workspace_id: str) -> list[dict]:
