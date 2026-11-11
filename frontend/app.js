@@ -188,7 +188,14 @@ function buildWorkspace(uploads) {
   const amount = direction => records.filter(r => r.direction === direction).reduce((sum, r) => sum + (Number(r.amount_cents) || 0), 0);
   const missing = uploads.flatMap(file => (file.analysis?.missing_links || []).map(text => ({ file: file.filename, text })));
   const incompleteShipments = records.filter(r => r.record_type === "shipment" && (!r.origin || !r.destination));
-  return { documents: uploads.length, records, moneyIn: amount("money_in"), moneyOut: amount("money_out"), moneyPending: amount("unknown"), missing, incompleteShipments, needsReview: missing.length + incompleteShipments.length };
+  const pendingSignals = /expected|difference|outstanding|unpaid|underpaid|underpayment|not received|recorded amount\s*[:=]?\s*\$?0|recorded\s*[:=]?\s*\$?0/i;
+  const isExpectedButUnrecorded = record => record.direction === "money_in" && Number(record.amount_cents) > 0 && pendingSignals.test(String(record.evidence || ""));
+  const expectedButUnrecorded = records
+    .filter(isExpectedButUnrecorded)
+    .map(record => Number(record.amount_cents));
+  const moneyPending = amount("unknown") + (expectedButUnrecorded.length ? Math.max(...expectedButUnrecorded) : 0);
+  const moneyIn = records.filter(record => record.direction === "money_in" && !isExpectedButUnrecorded(record)).reduce((sum, record) => sum + (Number(record.amount_cents) || 0), 0);
+  return { documents: uploads.length, records, moneyIn, moneyOut: amount("money_out"), moneyPending, missing, incompleteShipments, needsReview: missing.length + incompleteShipments.length };
 }
 
 async function refreshSummary() {
