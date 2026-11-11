@@ -23,7 +23,12 @@ GET  /manifest                              dataset manifest (planted cases pane
 from __future__ import annotations
 
 import hashlib
+from functools import lru_cache
+from threading import Lock
+import searoute
 import json
+import re
+import requests
 import zipfile
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -61,6 +66,7 @@ from sherlock.obligations import obligation_dict
 from sherlock.pipeline import seed as run_seed
 from sherlock.llm import get_llm
 from sherlock.uploads import analyze_pdf
+from sherlock.todo import build_todos, generate_pdf, generate_xlsx
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
@@ -83,24 +89,227 @@ def config():
     """What the frontend needs to render honestly: the threshold that colors confidence, and the demo actor."""
     s = get_settings()
     return {"auto_threshold": DEFAULT_CONFIG.auto_threshold, "demo_actor": s.sherlock_demo_actor,
-            "model": s.anthropic_model}
+            "model": s.anthropic_model, "mapbox_access_token": s.mapbox_access_token}
 
 
 # --------------------------------------------------------------------------- document intake
 
+_route_lock = Lock()
+
+
+@lru_cache(maxsize=256)
+def _sea_geometry(lon1: float, lat1: float, lon2: float, lat2: float):
+    # The routing library shares a mutable graph: serialize its use.
+    with _route_lock:
+        route = searoute.searoute([lon1, lat1], [lon2, lat2], append_orig_dest=False)
+    if len(route['geometry']['coordinates']) < 2:
+        raise ValueError('No sea route between these locations')
+    return route['geometry']
+
+
+@app.get('/sea-route')
+def sea_route(lon1: float = Query(..., ge=-180, le=180), lat1: float = Query(..., ge=-90, le=90),
+              lon2: float = Query(..., ge=-180, le=180), lat2: float = Query(..., ge=-90, le=90)):
+    try:
+        return {'geometry': _sea_geometry(lon1, lat1, lon2, lat2), 'estimated': True}
+    except (ValueError, KeyError) as exc:
+        raise HTTPException(422, 'Sea route unavailable for these locations') from exc
+
+
+def _workspace_path() -> Path:
+    return get_settings().uploaded_documents_dir.parent / "workspaces.json"
+
+
+def _workspaces() -> list[dict]:
+    path = _workspace_path()
+    try:
+        return json.loads(path.read_text()) if path.exists() else []
+    except json.JSONDecodeError:
+        return []
+
+
+class WorkspaceIn(BaseModel):
+    name: str = Field(min_length=1, max_length=80)
+
+
+class ChatIn(BaseModel):
+    workspace_id: str = Field(min_length=1)
+    question: str = Field(min_length=1, max_length=2000)
+
+
+def _concise_answer(text: str, limit: int = 150) -> str:
+    words = str(text or "").split()
+    if len(words) <= limit:
+        return " ".join(words)
+    return " ".join(words[:limit]).rstrip(".,;:") + "…"
+
+
+@app.get("/workspaces")
+def list_workspaces():
+    return {"workspaces": _workspaces()}
+
+
+@app.post("/workspaces")
+def create_workspace(body: WorkspaceIn):
+    name = body.name.strip()
+    workspace_id = re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")[:48]
+    if not workspace_id:
+        raise HTTPException(422, "document set name needs letters or numbers")
+    workspaces = _workspaces()
+    if any(w.get("id") == workspace_id for w in workspaces):
+        raise HTTPException(409, "a document set with that name already exists")
+    created = {"id": workspace_id, "name": name}
+    path = _workspace_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(workspaces + [created], indent=2) + "\n")
+    return created
+
+
+SUPPORTED_CURRENCIES = {"USD", "EUR", "GBP", "CAD", "AUD", "JPY", "CHF", "CNY", "INR", "MXN", "SGD"}
+
+
+@lru_cache(maxsize=32)
+def _fx_rate(currency: str) -> tuple[float, str]:
+    if currency == "USD":
+        return 1.0, ""
+    response = requests.get(f"https://api.frankfurter.dev/v2/rate/USD/{currency}", timeout=5)
+    response.raise_for_status()
+    data = response.json()
+    return float(data["rate"]), str(data.get("date", ""))
+
+
+@app.get("/fx-rate")
+def fx_rate(currency: str = Query("USD", min_length=3, max_length=3)):
+    code = currency.upper()
+    if code not in SUPPORTED_CURRENCIES:
+        raise HTTPException(422, f"unsupported display currency: {code}")
+    try:
+        rate, date = _fx_rate(code)
+        return {"currency": code, "rate": rate, "date": date}
+    except (requests.RequestException, KeyError, TypeError, ValueError) as exc:
+        raise HTTPException(502, "currency conversion is temporarily unavailable") from exc
+
+
+@app.post("/chat")
+def chat(body: ChatIn):
+    """Ask Claude Dr. Watson about only the selected document set."""
+    _workspace(body.workspace_id)
+    if not get_settings().anthropic_api_key:
+        raise HTTPException(503, "Claude Dr. Watson needs ANTHROPIC_API_KEY in .env")
+    uploads = _workspace_uploads(body.workspace_id)
+    context = []
+    for upload in uploads:
+        analysis = upload.get("analysis") or {}
+        context.append({
+            "file": upload.get("filename", "uploaded PDF"),
+            "summary": analysis.get("summary", ""),
+            "records": analysis.get("records", []),
+            "missing_links": analysis.get("missing_links", []),
+        })
+    system = ("You are Claude Dr. Watson, Sherlock's careful finance and shipment assistant. "
+              "Answer only from the uploaded document set context. Do not invent facts. "
+              "If the documents do not establish an answer, say what is unknown and what evidence is needed. "
+              "Use simple English for a fourth-grade reader. Be brief: answer in 2 to 5 short sentences, "
+              "with no more than 3 key facts and no long lists. Do not overwhelm the reader with extra specifics. "
+              "Keep the answer under 150 words. Cite the relevant filename and page through the sources list. "
+              "Amounts are printed values unless the context explicitly includes a conversion.")
+    user = f"Question:\n{body.question.strip()}\n\nUploaded document set context:\n{json.dumps(context, ensure_ascii=False, default=str)[:60000]}"
+    try:
+        result = get_llm().complete_json("chat", "chat-v1", system, user, stub_input=body.question)
+    except Exception as exc:
+        raise HTTPException(502, f"Claude Dr. Watson could not answer: {exc}") from exc
+    return {"answer": _concise_answer(result.output["answer"]), "sources": result.output.get("sources", [])[:3], "model": result.model, "source": result.source}
+
+
+def _workspace_uploads(workspace_id: str) -> list[dict]:
+    return list_uploads(scope="active", workspace_id=workspace_id)["uploads"]
+
+
+def _workspace(workspace_id: str) -> dict:
+    workspace = next((w for w in _workspaces() if w.get("id") == workspace_id), None)
+    if not workspace:
+        raise HTTPException(404, "document set not found")
+    return workspace
+
+
+@app.delete("/workspaces/{workspace_id}")
+def delete_workspace(workspace_id: str):
+    workspace = _workspace(workspace_id)
+    directory = get_settings().uploaded_documents_dir
+    removed = 0
+    if directory.exists():
+        for path in directory.glob("*.json"):
+            try:
+                upload = json.loads(path.read_text())
+            except json.JSONDecodeError:
+                continue
+            if upload.get("workspace_id") == workspace_id:
+                path.unlink()
+                pdf = directory / f"{path.stem}.pdf"
+                if pdf.exists():
+                    pdf.unlink()
+                removed += 1
+    remaining = [w for w in _workspaces() if w.get("id") != workspace_id]
+    path = _workspace_path()
+    path.write_text(json.dumps(remaining, indent=2) + "\n")
+    return {"deleted": workspace, "uploads_removed": removed}
+
+
+@app.get("/todo")
+def todo(workspace_id: str = Query(...)):
+    _workspace(workspace_id)
+    return {"workspace_id": workspace_id, "todos": build_todos(_workspace_uploads(workspace_id))}
+
+
+@app.get("/todo.pdf")
+def todo_pdf(workspace_id: str = Query(...)):
+    workspace = _workspace(workspace_id)
+    content = generate_pdf(build_todos(_workspace_uploads(workspace_id)))
+    filename = re.sub(r"[^a-z0-9]+", "-", workspace["name"].lower()).strip("-") or "document-set"
+    return Response(content, media_type="application/pdf", headers={"Content-Disposition": f'attachment; filename="{filename}-todo.pdf"'})
+
+
+@app.get("/todo.xlsx")
+def todo_xlsx(workspace_id: str = Query(...)):
+    workspace = _workspace(workspace_id)
+    content = generate_xlsx(build_todos(_workspace_uploads(workspace_id)))
+    filename = re.sub(r"[^a-z0-9]+", "-", workspace["name"].lower()).strip("-") or "document-set"
+    return Response(content, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", headers={"Content-Disposition": f'attachment; filename="{filename}-todo.xlsx"'})
+
 
 @app.get("/uploads")
-def list_uploads():
+def list_uploads(scope: str = Query("active", pattern="^(active|history|all)$"), workspace_id: str | None = None):
     directory = get_settings().uploaded_documents_dir
     if not directory.exists():
         return {"uploads": []}
     uploads = []
     for path in sorted(directory.glob("*.json"), key=lambda p: p.stat().st_mtime, reverse=True):
         try:
-            uploads.append(json.loads(path.read_text()))
+            upload = json.loads(path.read_text())
+            archived = bool(upload.get("archived", False))
+            belongs = workspace_id is None or upload.get("workspace_id") == workspace_id
+            if belongs and (scope == "all" or (scope == "history" and archived) or (scope == "active" and not archived)):
+                uploads.append(upload)
         except json.JSONDecodeError:
             continue
     return {"uploads": uploads}
+
+
+@app.post("/uploads/archive")
+def archive_uploads():
+    """Move every active packet out of the worker desktop and into read-only history."""
+    directory = get_settings().uploaded_documents_dir
+    moved = 0
+    for path in directory.glob("*.json") if directory.exists() else []:
+        try:
+            upload = json.loads(path.read_text())
+        except json.JSONDecodeError:
+            continue
+        if not upload.get("archived", False):
+            upload["archived"] = True
+            path.write_text(json.dumps(upload, indent=2) + "\n")
+            moved += 1
+    return {"archived": moved}
 
 
 def _pdfs_from_upload(content: bytes, filename: str) -> list[tuple[str, bytes]]:
@@ -129,6 +338,9 @@ async def upload_documents(request: Request):
     if not get_llm().has_key:
         raise HTTPException(422, "Add ANTHROPIC_API_KEY to .env before analyzing documents")
     filename = Path(request.headers.get("x-filename", "upload")).name or "upload"
+    workspace_id = request.headers.get("x-workspace-id", "")
+    if workspace_id not in {w.get("id") for w in _workspaces()}:
+        raise HTTPException(422, "choose a document set before uploading")
     packets = _pdfs_from_upload(content, filename)
     directory = get_settings().uploaded_documents_dir
     directory.mkdir(parents=True, exist_ok=True)
@@ -141,7 +353,7 @@ async def upload_documents(request: Request):
         except Exception as exc:
             raise HTTPException(502, f"could not analyze {pdf_name}: {exc}") from exc
         upload_id = hashlib.sha256(pdf).hexdigest()[:16]
-        payload = {"id": upload_id, "filename": pdf_name, "analysis": analysis}
+        payload = {"id": upload_id, "filename": pdf_name, "analysis": analysis, "archived": False, "workspace_id": workspace_id}
         (directory / f"{upload_id}.pdf").write_bytes(pdf)
         (directory / f"{upload_id}.json").write_text(json.dumps(payload, indent=2) + "\n")
         uploads.append(payload)

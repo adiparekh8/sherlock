@@ -8,6 +8,7 @@ version = "0.1.0"
 description = "Tariff refund allocation with evidence-linked ledger, review queue, audit memo, and journal-entry export."
 requires-python = ">=3.11"
 dependencies = [
+    "searoute>=1.6,<2",
     "fastapi>=0.110",
     "uvicorn[standard]>=0.29",
     "sqlalchemy>=2.0",

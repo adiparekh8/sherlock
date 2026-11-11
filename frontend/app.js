@@ -4,14 +4,21 @@
 
 const PAGES = [
   ["documents", "Documents", "M6 3h8l4 4v14H6z M14 3v5h5 M9 13h6 M9 17h6"],
+  ["today", "Today", "M12 3a9 9 0 1 0 9 9 M12 7v5l3 2"],
   ["overview", "Overview", "M3 3h18v18H3z M3 9h18 M9 21V9"],
   ["ledger", "Ledger", "M4 5h16 M4 12h16 M4 19h10"],
-  ["review", "Review Queue", "M12 3l9 16H3z M12 10v4 M12 17h.01"],
-  ["memo", "Memo", "M6 3h9l5 5v13H6z M14 3v6h6 M9 13h6 M9 17h6"],
-  ["export", "Export", "M12 3v12 M7 10l5 5 5-5 M4 19h16"],
+  ["timeline", "Timeline", "M5 5h14 M5 12h9 M5 19h14 M8 5v14"],
+  ["memo", "TODO", "M6 3h9l5 5v13H6z M14 3v6h6 M9 13h6 M9 17h6"],
 ];
 
-const S = { page: "documents", datasets: [], loaded: null, summary: null, refund: null, threshold: 0.8, actor: "", queueCount: 0, uploads: [], selectedUpload: null };
+const COUNTRIES = [
+  ["US", "United States", "USD", "🇺🇸"], ["GB", "United Kingdom", "GBP", "🇬🇧"], ["DE", "Germany", "EUR", "🇩🇪"],
+  ["FR", "France", "EUR", "🇫🇷"], ["IT", "Italy", "EUR", "🇮🇹"], ["ES", "Spain", "EUR", "🇪🇸"],
+  ["CA", "Canada", "CAD", "🇨🇦"], ["AU", "Australia", "AUD", "🇦🇺"], ["JP", "Japan", "JPY", "🇯🇵"],
+  ["CH", "Switzerland", "CHF", "🇨🇭"], ["CN", "China", "CNY", "🇨🇳"], ["IN", "India", "INR", "🇮🇳"],
+  ["MX", "Mexico", "MXN", "🇲🇽"], ["SG", "Singapore", "SGD", "🇸🇬"]
+];
+const S = { page: "documents", datasets: [], documentSets: [], workspaceId: null, loaded: null, summary: null, threshold: 0.8, actor: "", queueCount: 0, uploads: [], selectedUpload: null, country: "US", currency: "USD", fxRate: 1, fxDate: "", loadingMessage: "" };
 
 // --------------------------------------------------------------------------- helpers
 
@@ -20,9 +27,12 @@ function formatCents(cents) {
   const n = Number(cents);
   if (!Number.isInteger(n)) return "";
   const sign = n < 0 ? "-" : "";
-  const abs = Math.abs(n);
-  return `${sign}$${Math.floor(abs / 100).toLocaleString("en-US")}.${String(abs % 100).padStart(2, "0")}`;
+  const converted = Math.round(n * (Number(S.fxRate) || 1));
+  const abs = Math.abs(converted);
+  return `${sign}${currencySymbol(S.currency)}${Math.floor(abs / 100).toLocaleString("en-US")}.${String(abs % 100).padStart(2, "0")}`;
 }
+function currencySymbol(code) { return ({ USD: "$", EUR: "€", GBP: "£", CAD: "CA$", AUD: "A$", JPY: "¥", CHF: "CHF ", CNY: "¥", INR: "₹", MXN: "MX$", SGD: "S$" }[code] || `${code} `); }
+function formatConvertedUsd(amountUsd) { const cents = Math.round(Number(amountUsd || 0) * 100); return formatCents(cents); }
 function toDollarsInput(cents) { const n = Number(cents) || 0; return `${n < 0 ? "-" : ""}${Math.floor(Math.abs(n) / 100)}.${String(Math.abs(n) % 100).padStart(2, "0")}`; }
 function toCents(text) {
   // "5,285.23" -> 528523. Null unless it is a dollar amount with at most two decimals. No floats anywhere.
@@ -44,16 +54,18 @@ function label(s) {
 function status(s, cls) { return `<span class="status ${cls ?? tone(s)}">${esc(label(s))}</span>`; }
 function eyebrow(text, style = "") { return `<span class="eyebrow" style="${style}">${esc(text)}</span>`; }
 function card(inner, cls = "", attrs = "") { return `<section class="card ${cls}" ${attrs}>${inner}</section>`; }
-function progress(on) {
+function progress(on, message) {
   document.getElementById("progress").className = on ? "on" : "done";
   document.body.classList.toggle("is-loading", on);
+  document.querySelector("#loading-screen .loading-copy b").textContent = message || S.loadingMessage || "Sherlock is searching";
   document.getElementById("loading-screen").setAttribute("aria-hidden", String(!on));
 }
 function note(text, cls = "empty") { return `<div class="${cls}">${esc(text)}</div>`; }
 
 let inflight = 0;
-async function api(method, path, body) {
-  inflight++; progress(true);
+let renderVersion = 0;
+async function api(method, path, body, loadingMessage) {
+  inflight++; progress(true, loadingMessage);
   try {
     const r = await fetch(path, { method, headers: body ? { "content-type": "application/json" } : {}, body: body ? JSON.stringify(body) : undefined });
     if (!r.ok) {
@@ -67,12 +79,12 @@ async function api(method, path, body) {
     if (--inflight === 0) progress(false);
   }
 }
-const get = p => api("GET", p);
-const post = (p, b) => api("POST", p, b || {});
+const get = (p, loadingMessage) => api("GET", p, undefined, loadingMessage);
+const post = (p, b, loadingMessage) => api("POST", p, b || {}, loadingMessage);
 async function upload(file) {
   inflight++; progress(true);
   try {
-    const r = await fetch("/uploads", { method: "POST", headers: { "content-type": file.type || "application/octet-stream", "x-filename": file.name }, body: file });
+    const r = await fetch("/uploads", { method: "POST", headers: { "content-type": file.type || "application/octet-stream", "x-filename": file.name, "x-workspace-id": S.workspaceId || "" }, body: file });
     if (!r.ok) { const body = await r.json().catch(() => ({})); throw new Error(body.detail || `Upload failed (${r.status})`); }
     return r.json();
   } finally { if (--inflight === 0) progress(false); }
@@ -103,7 +115,15 @@ function renderNav() {
 
 function renderTopbar() {
   const el = document.getElementById("topbar");
-  if (!S.summary) { el.innerHTML = `<div class="stat"><span>Dataset</span><b class="dim">Not loaded</b></div>`; return; }
+  if (!S.summary) {
+    const w = S.workspace;
+    const set = S.documentSets.find(x => x.id === S.workspaceId);
+    const sets = `<select class="topbar-set-select" id="active-set-select" aria-label="Active document set"><option value="${set ? esc(set.id) : ""}">${set ? esc(set.name) : "Choose document set"}</option>${S.documentSets.filter(x => x.id !== S.workspaceId).map(x => `<option value="${esc(x.id)}">${esc(x.name)}</option>`).join("")}</select>`;
+    const countries = COUNTRIES.map(([code, name, currency, flag]) => `<button type="button" class="country-option" data-country="${code}" data-currency="${currency}"><span>${flag}</span><span>${esc(name)}</span><small>${currency}</small></button>`).join("");
+    const tools = `<div class="topbar-tools"><form class="watson-bar" id="watson-form"><span class="watson-mark">✦</span><input id="watson-question" ${S.workspaceId ? "" : "disabled"} placeholder="Ask Dr. Watson…" aria-label="Ask Dr. Watson"><button type="submit" ${S.workspaceId ? "" : "disabled"}>Ask</button><div id="watson-answer" class="watson-answer" hidden></div></form><details class="country-picker"><summary><span>${COUNTRIES.find(x => x[0] === S.country)?.[3] || "🌐"}</span> ${S.currency}</summary><div class="country-menu"><input type="search" id="country-search" placeholder="Search country or currency" aria-label="Search country or currency"><div id="country-options">${countries}</div></div></details>${sets}</div>`;
+    el.innerHTML = w?.documents ? `<div class="stat"><span>Documents</span><b>${w.documents}</b></div><div class="stat"><span>Money in</span><b>${formatCents(w.moneyIn)}</b></div><div class="stat"><span>Money out</span><b>${formatCents(w.moneyOut)}</b></div><div class="stat pending"><span>Money pending</span><b>${formatCents(w.moneyPending)}</b></div><div class="stat pending"><span>Needs review</span><b>${w.needsReview}</b></div><div class="spacer"></div>${tools}` : `<div class="spacer"></div>${tools}`;
+    return;
+  }
   const s = S.summary;
   const off = s.refund_cents - s.allocated_cents - s.unallocated_cents;
   const pill = off === 0 ? `<span class="pill ok">Balanced</span>` : `<span class="pill bad">Off by ${formatCents(Math.abs(off))}</span>`;
@@ -116,22 +136,73 @@ function renderTopbar() {
     <div class="stat"><span>Refund id</span><b class="dim">${esc(s.refund_id)}</b></div>`;
 }
 
+async function setCurrency(code, country = S.country) {
+  S.loadingMessage = "Currency changing";
+  try {
+    const result = await get(`/fx-rate?currency=${encodeURIComponent(code)}`);
+    S.country = country || COUNTRIES.find(x => x[2] === result.currency)?.[0] || "US";
+    S.currency = result.currency;
+    S.fxRate = Number(result.rate) || 1;
+    S.fxDate = result.date || "";
+    try { localStorage.setItem("sherlock.currency", S.currency); localStorage.setItem("sherlock.country", S.country); } catch (_) { /* private mode */ }
+    renderTopbar();
+    await render();
+  } finally {
+    S.loadingMessage = "";
+  }
+}
+
+async function askWatson(question) {
+  const answer = document.getElementById("watson-answer");
+  const button = document.querySelector("#watson-form button[type=submit]");
+  if (!answer || !S.workspaceId) return;
+  answer.hidden = false;
+  answer.className = "watson-answer loading";
+  answer.textContent = "Watson is searching";
+  if (button) button.disabled = true;
+  try {
+    const result = await post("/chat", { workspace_id: S.workspaceId, question }, "Watson is searching");
+    const sources = (result.sources || []).map(source => `<li>${esc(source.file)} · page ${esc(source.page)}${source.quote ? ` — ${esc(source.quote)}` : ""}</li>`).join("");
+    answer.className = "watson-answer";
+    answer.innerHTML = `<b>Dr. Watson</b><p>${esc(result.answer)}</p>${sources ? `<small>Sources</small><ul>${sources}</ul>` : ""}`;
+  } catch (error) {
+    answer.className = "watson-answer error";
+    answer.textContent = error.message;
+  } finally {
+    if (button) button.disabled = false;
+  }
+}
+
 function renderSidebar() {
   const sel = document.getElementById("dataset");
   sel.innerHTML = S.datasets.map(d => `<option value="${esc(d.name)}" ${d.loaded ? "selected" : ""}>${esc(d.name)}${d.loaded ? "" : " (not loaded)"}</option>`).join("")
     || `<option>no datasets under data/</option>`;
   document.getElementById("reviewer").value = S.actor;
   const d = S.datasets.find(x => x.loaded);
-  document.getElementById("foot").textContent = d ? `${d.name} · ${d.counts.shipments} shipments · ${d.counts.contracts} contracts` : "load a dataset to begin";
+  const activeSet = S.documentSets.find(set => set.id === S.workspaceId);
+  document.getElementById("foot").textContent = d ? `${d.name} · ${d.counts.shipments} shipments · ${d.counts.contracts} contracts` : (activeSet ? `${activeSet.name} · ${S.workspace.documents} uploaded documents` : "choose a document set to begin");
+}
+
+function buildWorkspace(uploads) {
+  const records = uploads.flatMap(file => (file.analysis?.records || []).map((record, i) => ({ ...record, file: file.filename, key: `${file.id}-${i}` })));
+  const amount = direction => records.filter(r => r.direction === direction).reduce((sum, r) => sum + (Number(r.amount_cents) || 0), 0);
+  const missing = uploads.flatMap(file => (file.analysis?.missing_links || []).map(text => ({ file: file.filename, text })));
+  const incompleteShipments = records.filter(r => r.record_type === "shipment" && (!r.origin || !r.destination));
+  return { documents: uploads.length, records, moneyIn: amount("money_in"), moneyOut: amount("money_out"), moneyPending: amount("unknown"), missing, incompleteShipments, needsReview: missing.length + incompleteShipments.length };
 }
 
 async function refreshSummary() {
-  const ds = await get("/datasets");
+  const [ds, sets] = await Promise.all([get("/datasets"), get("/workspaces")]);
   S.datasets = ds.datasets; S.loaded = ds.loaded;
+  S.documentSets = sets.workspaces || [];
+  if (!S.documentSets.some(set => set.id === S.workspaceId)) S.workspaceId = null;
+  const uploaded = S.workspaceId ? await get(`/uploads?workspace_id=${encodeURIComponent(S.workspaceId)}`) : { uploads: [] };
+  S.uploads = uploaded.uploads || [];
+  S.workspace = buildWorkspace(S.uploads);
   if (S.loaded) {
     const r = await get("/refund");
     S.summary = r.summary; S.refund = r.refund; S.queueCount = r.summary.queue_count;
-  } else { S.summary = null; S.refund = null; S.queueCount = 0; }
+  } else { S.summary = null; S.refund = null; S.queueCount = S.workspace.needsReview; }
   renderSidebar(); renderTopbar(); renderNav();
 }
 
@@ -205,10 +276,38 @@ function evidenceList(ev) {
 
 // --------------------------------------------------------------------------- document tree
 
-const GEO = [["shanghai",121.47,31.23],["shenzhen",114.06,22.54],["hong kong",114.17,22.32],["singapore",103.82,1.35],["tokyo",139.65,35.68],["busan",129.08,35.18],["los angeles",-118.24,34.05],["long beach",-118.19,33.77],["new york",-74.01,40.71],["miami",-80.19,25.76],["houston",-95.37,29.76],["seattle",-122.33,47.61],["rotterdam",4.48,51.92],["hamburg",9.99,53.55],["london",-0.13,51.51],["dubai",55.27,25.20],["mumbai",72.88,19.08],["sydney",151.21,-33.87],["china",104.20,35.86],["united states",-98.58,39.83],["usa",-98.58,39.83],["germany",10.45,51.17],["japan",138.25,36.20],["india",78.96,20.59]];
+const GEO = [["shanghai",121.47,31.23],["shenzhen",114.06,22.54],["hong kong",114.17,22.32],["singapore",103.82,1.35],["tokyo",139.65,35.68],["busan",129.08,35.18],["los angeles",-118.24,34.05],["long beach",-118.19,33.77],["new york",-74.01,40.71],["miami",-80.19,25.76],["houston",-95.37,29.76],["seattle",-122.33,47.61],["rotterdam",4.48,51.92],["hamburg",9.99,53.55],["london",-0.13,51.51],["dubai",55.27,25.20],["mumbai",72.88,19.08],["sydney",151.21,-33.87],["thessaloniki",22.926,40.635]];
+const GEO_CACHE = new Map();
 function geoPoint(place) { const q = String(place || "").toLowerCase(); return GEO.find(([name]) => q.includes(name)); }
+async function resolveGeoPoint(place) {
+  const fallback = geoPoint(place);
+  if (!place || !S.mapboxToken) return fallback;
+  const key = String(place).trim().toLowerCase();
+  if (GEO_CACHE.has(key)) return GEO_CACHE.get(key);
+  const queries = [String(place), `port ${String(place)}`];
+  try {
+    let feature = null;
+    for (const query of queries) {
+      const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?types=poi&limit=1&access_token=${encodeURIComponent(S.mapboxToken)}`;
+      const result = await fetch(url).then(r => r.ok ? r.json() : null);
+      feature = result?.features?.[0];
+      if (feature) break;
+    }
+    if (!feature) {
+      const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(place)}.json?types=place,locality&limit=1&access_token=${encodeURIComponent(S.mapboxToken)}`;
+      const result = await fetch(url).then(r => r.ok ? r.json() : null);
+      feature = result?.features?.[0];
+    }
+    const center = feature?.center;
+    const point = center ? [key, Number(center[0]), Number(center[1]), feature.place_name] : fallback;
+    GEO_CACHE.set(key, point);
+    return point;
+  } catch (_) {
+    return fallback;
+  }
+}
 function routeMap(records, id) {
-  const routes = records.filter(r => r.record_type === "shipment" && geoPoint(r.origin) && geoPoint(r.destination)).slice(0, 6);
+  const routes = records.filter(r => r.record_type === "shipment" && r.origin && r.destination).slice(0, 6);
   const routeList = routes.map(r => `<li><span>${esc(r.origin)}</span><i></i><span>${esc(r.destination)}</span>${r.reference ? `<b>${esc(r.reference)}</b>` : ""}</li>`).join("");
   return `<section class="map-card">
     <div class="map-head"><div>${eyebrow("Shipment routes")}<h2>Global flow</h2></div><span class="map-key"><i></i> Documented locations</span></div>
@@ -220,34 +319,53 @@ function routeMap(records, id) {
 async function mountShipmentMaps(uploads) {
   (S.maps || []).forEach(map => map.remove());
   S.maps = [];
-  const mapped = uploads.filter(item => (item.analysis?.records || []).some(r => r.record_type === "shipment" && geoPoint(r.origin) && geoPoint(r.destination)));
-  if (!mapped.length) return;
+  if (!uploads.length) return;
+  if (!S.mapboxToken || !S.mapboxToken.startsWith("pk.")) {
+    document.querySelectorAll(".shipment-map").forEach(el => { el.innerHTML = `<div class="map-setup"><b>Mapbox needs a public token</b><span>Add <code>MAPBOX_ACCESS_TOKEN=pk.…</code> to <code>.env</code>, then restart Sherlock.</span></div>`; });
+    return;
+  }
+  if (!window.mapboxgl || !window.mapboxgl.supported()) {
+    document.querySelectorAll(".shipment-map").forEach(el => { el.textContent = "Mapbox requires WebGL2. Enable it in this browser and reload."; });
+    return;
+  }
   try {
-    const maplibregl = await import("https://unpkg.com/maplibre-gl@6.17.0/dist/maplibre-gl.mjs");
-    for (const item of mapped) {
+    for (const item of uploads) {
       const container = document.getElementById(`shipment-map-${item.id}`);
       if (!container) continue;
-      const routes = item.analysis.records.filter(r => r.record_type === "shipment" && geoPoint(r.origin) && geoPoint(r.destination)).slice(0, 6);
-      const features = routes.flatMap(r => {
-        const a = geoPoint(r.origin), b = geoPoint(r.destination);
-        return [{ type: "Feature", properties: { kind: "route", reference: r.reference || "Shipment" }, geometry: { type: "LineString", coordinates: [[a[1], a[2]], [b[1], b[2]]] } },
-          { type: "Feature", properties: { kind: "point", label: r.origin }, geometry: { type: "Point", coordinates: [a[1], a[2]] } },
-          { type: "Feature", properties: { kind: "point", label: r.destination }, geometry: { type: "Point", coordinates: [b[1], b[2]] } }];
-      });
-      const map = new maplibregl.Map({ container, center: [8, 25], zoom: 1.25, attributionControl: true,
-        style: { version: 8, sources: { osm: { type: "raster", tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"], tileSize: 256, attribution: "© OpenStreetMap contributors" } }, layers: [{ id: "osm", type: "raster", source: "osm", paint: { "raster-saturation": -1, "raster-brightness-max": .43, "raster-contrast": .25 } }] } });
+      const routes = (item.analysis.records || []).filter(r => r.record_type === "shipment" && r.origin && r.destination).slice(0, 6);
+      const resolved = (await Promise.all(routes.map(async r => ({ record: r, a: await resolveGeoPoint(r.origin), b: await resolveGeoPoint(r.destination) })))).filter(r => r.a && r.b);
+      let routeError = "";
+      const features = (await Promise.all(resolved.map(async ({ record: r, a, b }) => {
+        try {
+          const response = await fetch(`/sea-route?${new URLSearchParams({lon1:a[1],lat1:a[2],lon2:b[1],lat2:b[2]})}`);
+          if (!response.ok) {
+            routeError = response.status === 404 ? "Restart the Sherlock server to load sea routing, then refresh this page." : "Sea routing could not complete this request. Please refresh and try again.";
+            return [];
+          }
+          const { geometry } = await response.json();
+          const coordinates = geometry.coordinates;
+          return [{ type: "Feature", properties: { kind: "route", reference: r.reference || "Shipment" }, geometry },
+            { type: "Feature", properties: { kind: "point", label: `${r.origin} · estimated sea endpoint` }, geometry: { type: "Point", coordinates: coordinates[0] } },
+            { type: "Feature", properties: { kind: "point", label: `${r.destination} · estimated sea endpoint` }, geometry: { type: "Point", coordinates: coordinates[coordinates.length - 1] } }];
+        } catch (_) { routeError = "Could not reach the sea-routing service. Check that Sherlock is running, then refresh."; return []; }
+      }))).flat();
+      if (!container.isConnected) return;
+      container.insertAdjacentHTML("afterend", `<p class="map-empty">Estimated sea routes · ${features.length / 3} of ${routes.length} routes shown. Actual vessel paths may differ.</p>`);
+      if (!features.length) { container.innerHTML = `<div class="map-setup"><b>Sea route unavailable</b><span>${esc(routeError || "We could not locate both ports. The printed locations remain below.")}</span></div>`; continue; }
+      const map = new mapboxgl.Map({ accessToken: S.mapboxToken, container, style: "mapbox://styles/mapbox/dark-v11", center: [8, 25], zoom: 1.25, attributionControl: true });
       map.on("load", () => {
         map.addSource("shipments", { type: "geojson", data: { type: "FeatureCollection", features } });
-        map.addLayer({ id: "shipment-route", type: "line", source: "shipments", filter: ["==", ["get", "kind"], "route"], paint: { "line-color": "#b4ff49", "line-width": 2.2, "line-opacity": .9 } });
-        map.addLayer({ id: "shipment-point", type: "circle", source: "shipments", filter: ["==", ["get", "kind"], "point"], paint: { "circle-color": "#b4ff49", "circle-radius": 5, "circle-stroke-color": "#050507", "circle-stroke-width": 2 } });
-        map.on("click", "shipment-point", e => new maplibregl.Popup({ closeButton: false }).setLngLat(e.lngLat).setText(e.features[0].properties.label).addTo(map));
-        const coords = features.filter(f => f.geometry.type === "Point").map(f => f.geometry.coordinates);
-        if (coords.length > 1) map.fitBounds(coords.reduce((b, c) => b.extend(c), new maplibregl.LngLatBounds(coords[0], coords[0])), { padding: 55, maxZoom: 4 });
+        const accent = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim();
+        map.addLayer({ id: "shipment-route", type: "line", source: "shipments", filter: ["==", ["get", "kind"], "route"], paint: { "line-color": accent, "line-width": 2.8, "line-opacity": .9 } });
+        map.addLayer({ id: "shipment-point", type: "circle", source: "shipments", filter: ["==", ["get", "kind"], "point"], paint: { "circle-color": accent, "circle-radius": 5, "circle-stroke-color": "#171717", "circle-stroke-width": 2 } });
+        map.on("click", "shipment-point", e => new mapboxgl.Popup({ closeButton: false }).setLngLat(e.lngLat).setText(e.features[0].properties.label).addTo(map));
+        const coords = features.filter(f => f.geometry.type === "LineString").flatMap(f => f.geometry.coordinates);
+        if (coords.length > 1) map.fitBounds(coords.reduce((b, c) => b.extend(c), new mapboxgl.LngLatBounds(coords[0], coords[0])), { padding: 55, maxZoom: 4 });
       });
       S.maps.push(map);
     }
   } catch (_) {
-    document.querySelectorAll(".shipment-map").forEach(el => { el.textContent = "Map could not load. Check your internet connection."; });
+    document.querySelectorAll(".shipment-map").forEach(el => { el.textContent = "Mapbox could not load. Check your token and internet connection."; });
   }
 }
 
@@ -276,17 +394,114 @@ function uploadTree(item) {
 }
 
 async function pageDocuments() {
-  const result = await get("/uploads");
-  S.uploads = result.uploads || [];
+  const folders = S.documentSets.map(set => {
+    const count = set.id === S.workspaceId ? S.workspace.documents : "";
+    return desktopFolder(set.name, count === "" ? "Open document set" : `${count} active documents`, `#workspace/${encodeURIComponent(set.id)}`, "parent");
+  }).join("");
   return `${eyebrow("Documents")}
-    <div class="page-head"><div><h1>Money flow</h1><p class="lede">Add PDFs or a ZIP of PDFs. Sherlock keeps partial information and shows the missing links.</p></div></div>
+    <div class="page-head"><div><h1>Worker desktop</h1><p class="lede">Each folder is isolated from every other document set.</p></div><button class="btn primary" data-new-set>New document set</button></div>
+    <section class="desktop" aria-label="Worker folders">
+      ${folders || note("Create a document set to begin.")}
+    </section>`;
+}
+
+function desktopFolder(name, detail, href, cls) {
+  return `<a class="desktop-folder ${cls}" href="${href}"><span class="folder-icon"><i></i></span><b>${esc(name)}</b><small>${esc(detail)}</small></a>`;
+}
+
+async function pageWorkspace() {
+  const set = S.documentSets.find(x => x.id === S.workspaceId);
+  if (!set) return `${eyebrow("Documents")}<h1>Document set not found</h1><a class="btn" href="#documents">Back to desktop</a>`;
+  return `${eyebrow(`Documents / ${set.name}`)}
+    <div class="page-head"><div><h1>${esc(set.name)}</h1><p class="lede">Files in this set stay together while a worker processes them.</p></div><div class="btn-row"><a class="btn" href="#documents">Back to desktop</a><button class="btn danger" data-delete-set="${esc(set.id)}">Delete set</button></div></div>
+    <section class="desktop child-desktop" aria-label="Current document set folders">
+      ${desktopFolder("Incoming", "Drop PDFs and ZIPs", "#intake", "in")}
+      ${desktopFolder("Shipments", `${S.workspace.records.filter(r => r.record_type === "shipment").length} shipment records`, "#ledger", "ship")}
+    </section>`;
+}
+
+async function pageIntake() {
+  if (!S.workspaceId) return `${eyebrow("Documents / Incoming")}<h1>Choose a document set first</h1><a class="btn primary" href="#documents">Back to desktop</a>`;
+  return `${eyebrow("Documents / Incoming")}
+    <div class="page-head"><div><h1>Incoming files</h1><p class="lede">Drop a PDF or ZIP to create a new active workspace record.</p></div><a class="btn" href="#documents">Back to desktop</a></div>
     <section id="drop-panel" class="drop-panel" tabindex="0">
       <input id="pdf-picker" type="file" accept="application/pdf,.pdf,.zip,application/zip" multiple hidden>
       <div class="drop-mark">+</div><b>Drop PDFs or a ZIP here</b><p>or <button class="link-btn" data-choose-files>choose files</button></p>
       <small>Files are analyzed with Claude only after you select them. ZIPs may contain up to 12 PDFs.</small>
     </section>
     <div id="upload-status"></div>
-    <div class="tree-list">${S.uploads.map(uploadTree).join("") || note("No documents yet. Upload a packet to start the money-flow map and flowchart.")}</div>`;
+    <div class="tree-list">${S.uploads.map(uploadTree).join("") || note("No active documents. New uploads appear here and across the workspace.")}</div>`;
+}
+
+function timelineDate(text) {
+  const source = String(text || "");
+  const iso = source.match(/\b(20\d{2})[-/](\d{1,2})[-/](\d{1,2})\b/);
+  const month = source.match(/\b(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\s+\d{1,2}(?:,)?\s+20\d{2}\b/i);
+  const value = iso ? `${iso[1]}-${iso[2].padStart(2, "0")}-${iso[3].padStart(2, "0")}` : month?.[0];
+  if (!value) return null;
+  const parsed = Date.parse(value);
+  return Number.isNaN(parsed) ? null : { sort: parsed, label: new Date(parsed).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) };
+}
+
+function timelineLabel(record) {
+  return ({ shipment: "Shipping details", invoice: "Bill", refund: "Refund", credit_memo: "Bill adjustment", purchase_order: "Order", statement: "Account summary", contract: "Agreement", claim: "Claim" }[record.record_type] || "Supporting document");
+}
+
+function timelineVisual(record) {
+  const visuals = {
+    shipment: ["▣", "The documents describe this shipment and its route."],
+    invoice: ["▤", "A bill lists the amount charged."],
+    refund: ["↩", "A refund is mentioned. Check the details for its payment status."],
+    credit_memo: ["−", "A document records a reduction to a bill."],
+    purchase_order: ["▢", "An order lists what was requested."],
+    statement: ["≡", "An account summary brings financial records together."],
+    contract: ["◇", "An agreement describes the terms between the parties."],
+    claim: ["!", "A claim describes an issue or a request for money."]
+  };
+  return visuals[record.record_type] || ["·", "Another document adds context to this shipment."];
+}
+
+function timelineGroups(uploads) {
+  const groups = [];
+  for (const upload of uploads) {
+    const records = upload.analysis?.records || [];
+    const shipments = records.filter(r => r.record_type === "shipment");
+    const anchors = shipments.length ? shipments : [{ reference: "Packet timeline", origin: "", destination: "", page: 1 }];
+    anchors.forEach((shipment, index) => {
+      const ref = shipment.reference || `Packet timeline ${index + 1}`;
+      const related = records.filter(record => record === shipment || shipments.length === 1 || (record.related_references || []).includes(ref));
+      const events = related.map((record, eventIndex) => {
+        const date = timelineDate(record.evidence);
+        return { record, date, eventIndex };
+      }).sort((a, b) => (a.date?.sort ?? Number.MAX_SAFE_INTEGER) - (b.date?.sort ?? Number.MAX_SAFE_INTEGER) || (a.record.page || 0) - (b.record.page || 0) || a.eventIndex - b.eventIndex);
+      groups.push({ upload, shipment, ref, events });
+    });
+  }
+  return groups;
+}
+
+async function pageTimeline() {
+  if (!S.workspaceId) return `${eyebrow("Timeline")}<h1>Choose a document set first</h1><a class="btn primary" href="#documents">Back to desktop</a>`;
+  if (!S.uploads.length) return `${eyebrow("Timeline")}<h1>No shipments yet</h1>${note("Upload a PDF or ZIP to build a shipment timeline.")}`;
+  const set = S.documentSets.find(x => x.id === S.workspaceId);
+  const groups = timelineGroups(S.uploads);
+  const cards = groups.map(group => {
+    const s = group.shipment;
+    const events = group.events.map(({ record, date }, index) => {
+      const [icon, description] = timelineVisual(record);
+      const refs = (record.related_references || []).filter(Boolean).slice(0, 5).map(ref => `<span>${esc(ref)}</span>`).join("");
+      return `<article class="timeline-event"><div class="timeline-marker" aria-hidden="true">${icon}</div><div class="timeline-event-content"><div class="timeline-meta"><span>${date ? esc(date.label) : "Date unknown"}</span><span>${index + 1} of ${group.events.length}</span></div><h3>${esc(timelineLabel(record))}</h3><p>${description}</p><details class="timeline-evidence"><summary>View details</summary><p>${esc(record.evidence || "No supporting text was returned.")}</p><small>${esc(group.upload.filename)} · page ${esc(record.page || "?")}</small><div class="timeline-detail">${record.reference ? `<span>${esc(record.reference)}</span>` : ""}${refs}</div></details></div></article>`;
+    }).join("");
+    return `<section class="timeline-card"><div class="timeline-card-head"><div><span class="timeline-file">${esc(group.upload.filename)}</span><h2>${esc(group.ref)}</h2><p>${s.origin && s.destination ? `From <b>${esc(s.origin)}</b> to <b>${esc(s.destination)}</b>` : "Shipment location not fully identified"}</p></div><span class="pill">${group.events.length} events</span></div><div class="timeline">${events || note("No extracted events for this shipment.")}</div></section>`;
+  }).join("");
+  return `${eyebrow(`Timeline · ${set?.name || "document set"}`)}<div class="page-head"><div><h1>Your shipment, step by step</h1><p class="lede">Follow the story. Open any step to see the paperwork.</p></div></div><p class="timeline-note">Dated steps appear first. Undated steps follow in document order; their timing is unknown.</p><div class="timeline-groups">${cards}</div>`;
+}
+
+async function pageHistory() {
+  const result = await get("/uploads?scope=history");
+  S.history = result.uploads || [];
+  const rows = S.history.map(item => { const a = item.analysis || {}, records = a.records || [], short = (a.summary || "No summary").slice(0, 150); return `<tr><td class="mono">${esc(item.filename)}</td><td class="num">${a.page_count || "—"}</td><td class="num">${records.length}</td><td class="dim">${esc(short)}${short.length === 150 ? "…" : ""}</td></tr>`; }).join("");
+  return `${eyebrow("Documents / History")}<div class="page-head"><div><h1>History</h1><p class="lede">Archived packets are retained here in compact form and do not affect the active workspace.</p></div></div>${table([{label:"file"},{label:"pages",num:true},{label:"records",num:true},{label:"summary"}], rows, "tight")}`;
 }
 
 async function handleFiles(files) {
@@ -300,8 +515,29 @@ async function handleFiles(files) {
 
 // --------------------------------------------------------------------------- overview
 
+async function pageToday() {
+  if (!S.workspaceId) return `${eyebrow("Today")}<h1>Choose a document set first</h1><p class="lede">Your daily work view appears here after you open a document set.</p><a class="btn primary" href="#documents">Open documents</a>`;
+  const set = S.documentSets.find(x => x.id === S.workspaceId);
+  const w = S.workspace;
+  if (!w.documents) return `${eyebrow(`Today · ${set?.name || "document set"}`)}<h1>Nothing to review yet</h1><p class="lede">Upload a packet and Sherlock will turn it into money, evidence, and follow-up actions.</p><a class="btn primary" href="#intake">Upload documents</a>`;
+  const todoResult = await get(`/todo?workspace_id=${encodeURIComponent(S.workspaceId)}`);
+  const todos = (todoResult.todos || []).slice(0, 5);
+  const healthTotal = w.documents + w.records.length + w.missing.length + w.incompleteShipments.length;
+  const healthDone = w.documents + w.records.length;
+  const health = healthTotal ? Math.round((healthDone / healthTotal) * 100) : 0;
+  const reviewRows = [...w.missing.map(x => ({ label: "Evidence missing", detail: `${x.file} · ${x.text}` })), ...w.incompleteShipments.map(x => ({ label: "Location missing", detail: `${x.file} · ${x.origin || "origin unknown"} → ${x.destination || "destination unknown"}` }))].slice(0, 4);
+  const reviewHtml = reviewRows.length ? reviewRows.map(x => `<li><span class="today-dot"></span><div><b>${esc(x.label)}</b><small>${esc(x.detail)}</small></div></li>`).join("") : `<li class="today-clear"><span>✓</span><div><b>Nothing is waiting for review</b><small>The packet has no missing links or shipment locations.</small></div></li>`;
+  const todoHtml = todos.length ? todos.map((row, i) => `<li><span class="today-priority ${esc(row.urgency || "medium")}">${i + 1}</span><div><b>${esc(row.task)}</b><small>${esc(row.reason || "Evidence-linked follow-up")} · ${esc(row.source_file || "source document")} p.${esc(row.page || "?")}</small></div><a class="btn" href="#memo">Review</a></li>`).join("") : `<li class="today-clear"><span>✓</span><div><b>No follow-ups found</b><small>Upload more documents if you expected a task here.</small></div></li>`;
+  return `${eyebrow(`Today · ${set?.name || "document set"}`)}
+    <div class="today-hero"><div><h1>What needs your attention?</h1><p class="lede">Sherlock read this packet and pulled the important work to the top.</p></div><a class="btn" href="#overview">Open full dashboard</a></div>
+    <section class="today-money card"><div><span class="eyebrow">Money pending</span><strong>${formatCents(w.moneyPending)}</strong><p>${w.records.filter(r => r.direction === "unknown").length} records still need a direction or payment status.</p></div><a class="btn primary" href="#ledger">Review money</a></section>
+    <div class="today-grid"><section class="today-panel card"><div class="today-panel-head"><div><span class="eyebrow">Packet health</span><h2>${health}% ready</h2></div><span class="pill ${health >= 80 ? "ok" : "bad"}">${w.needsReview ? `${w.needsReview} items need review` : "Ready"}</span></div><div class="today-progress"><i style="width:${health}%"></i></div><p class="today-caption">${w.records.length} extracted records · ${w.documents} document${w.documents === 1 ? "" : "s"} · ${w.incompleteShipments.length} shipment location${w.incompleteShipments.length === 1 ? "" : "s"} incomplete</p><ul class="today-list today-review-list">${reviewHtml}</ul></section>
+      <section class="today-panel card"><div class="today-panel-head"><div><span class="eyebrow">Next actions</span><h2>${todos.length} follow-up${todos.length === 1 ? "" : "s"}</h2></div><a class="btn" href="#memo">Open all</a></div><ul class="today-list">${todoHtml}</ul></section></div>
+    <div class="today-links"><a href="#intake">Add documents</a><a href="#timeline">See shipment timeline</a><a href="#memo">Open follow-up board</a></div>`;
+}
+
 async function pageOverview() {
-  if (!S.loaded) return `${eyebrow("Overview")}<h1>No dataset loaded</h1>${note("Upload documents from the Documents page to start a workspace.")}`;
+  if (!S.loaded) return workspaceOverview();
   const led = await get("/ledger");
   const s = led.summary;
   const auto = (s.by_status.auto_proposed || {}).cents || 0;
@@ -321,12 +557,20 @@ async function pageOverview() {
     <div class="page-head"><h1>${esc(S.refund.importer)}</h1><span class="pill">${esc(S.refund.source || "refund")}</span></div>
     <p class="lede">Track allocations and review unmatched records.</p>
     <div class="grid tiles">${tiles}</div>
-    <div class="summary-action"><p>${s.queue_count} allocation lines need review.</p><a class="btn primary" href="#review">Review records</a></div>
+    <div class="summary-action"><p>${s.queue_count} allocation lines need attention.</p><a class="btn primary" href="#ledger">Open ledger</a></div>
     <div class="grid two" style="margin-top:16px">
       ${card(`${eyebrow("Unallocated by reason")}${table([{ label: "reason" }, { label: "lines", num: true }, { label: "amount", num: true }], reasons)}`)}
       ${card(`${eyebrow("Allocated by customer")}${table([{ label: "customer" }, { label: "name" }, { label: "lines", num: true }, { label: "amount", num: true }], customers)}`)}
     </div>
     <details class="dataset-details"><summary>Manage data</summary>${datasetPanel()}</details>`;
+}
+
+function workspaceOverview() {
+  const w = S.workspace;
+  if (!w.documents) return `${eyebrow("Overview")}<h1>No documents yet</h1>${note("Upload a PDF to start the workspace.")}`;
+  const tiles = [["Documents", w.documents, "", "uploaded packets"], ["Money in", formatCents(w.moneyIn), "money", "printed amounts"], ["Money out", formatCents(w.moneyOut), "money", "printed amounts"], ["Shipment records", w.records.filter(r => r.record_type === "shipment").length, "", "documented routes"], ["Needs review", w.needsReview, w.needsReview ? "warn" : "ok", "missing links or locations"], ["Money pending", formatCents(w.moneyPending), "pending-money", "direction still unknown"]].map(([l, v, cls, sub]) => card(`${eyebrow(l)}<b>${v}</b><small>${sub}</small>`, `tile ${cls}`)).join("");
+  const set = S.documentSets.find(x => x.id === S.workspaceId);
+  return `${eyebrow(`Overview · ${set?.name || "document set"}`)}<div class="page-head"><h1>Document dashboard</h1></div><p class="lede">Every page reads the same uploaded-document set.</p><div class="grid tiles">${tiles}</div><div class="summary-action"><p>${w.needsReview} items need more evidence.</p><a class="btn primary" href="#ledger">Open ledger</a></div>`;
 }
 
 function datasetPanel() {
@@ -342,7 +586,7 @@ function datasetPanel() {
 // --------------------------------------------------------------------------- ledger
 
 async function pageLedger() {
-  if (!S.loaded) return `${eyebrow("Ledger")}<h1>No dataset loaded</h1>${note("open Overview and load one")}`;
+  if (!S.loaded) return workspaceLedger();
   const led = await get("/ledger");
   S.ledgerRows = led.records;
   S.ledgerView = "all";
@@ -362,6 +606,13 @@ async function pageLedger() {
     </div>
     <div id="ledger-table">${ledgerTable(led.records)}</div>
     <div id="drill" style="margin-top:16px">${note("click a line to open its evidence chain")}</div>`;
+}
+
+function workspaceLedger() {
+  const w = S.workspace;
+  const rows = w.records.map(r => `<tr><td class="mono">${esc(r.file)}</td><td>${esc(label(r.record_type))}</td><td class="mono">${esc(r.reference || "—")}</td><td>${esc(r.counterparty || "—")}</td><td class="mono">${esc(r.origin || "—")}</td><td class="mono">${esc(r.destination || "—")}</td><td class="num money">${r.amount_cents === null ? "—" : formatCents(r.amount_cents)}</td><td>${status(r.direction === "unknown" ? "pending_review" : r.direction, r.direction === "money_in" ? "ok" : r.direction === "money_out" ? "auto" : "review")}</td></tr>`).join("");
+  const set = S.documentSets.find(x => x.id === S.workspaceId);
+  return `${eyebrow(`Ledger · ${set?.name || "document set"}`)}<div class="page-head"><h1>Document ledger</h1></div><p class="lede">Records update as soon as a document is analyzed.</p>${table([{label:"document"},{label:"type"},{label:"reference"},{label:"counterparty"},{label:"origin"},{label:"destination"},{label:"amount",num:true},{label:"flow"}], rows)}`;
 }
 
 function ledgerTable(rows) {
@@ -403,7 +654,7 @@ async function drillDown(id) {
 // --------------------------------------------------------------------------- review queue
 
 async function pageReview() {
-  if (!S.loaded) return `${eyebrow("Review queue")}<h1>No dataset loaded</h1>${note("open Overview and load one")}`;
+  if (!S.loaded) return workspaceReview();
   const [q, obs] = await Promise.all([get("/review/queue"), get("/obligations")]);
   const details = await Promise.all(q.allocations.map(a => get(`/allocations/${a.id}`)));
   const items = await Promise.all(q.allocations.map((a, i) => queueItem(a, details[i])));
@@ -420,6 +671,14 @@ async function pageReview() {
     ${eyebrow("Contract clauses", "margin-top:28px")}
     <div class="queue">${obItems.join("") || note("no contract clauses waiting")}</div>
     ${decided.length ? `${eyebrow("Decided clauses", "margin-top:28px")}<div class="queue">${decidedItems.join("")}</div>` : ""}`;
+}
+
+function workspaceReview() {
+  const w = S.workspace;
+  const links = w.missing.map(x => `<li><b>${esc(x.file)}</b><span>${esc(x.text)}</span></li>`).join("");
+  const shipments = w.incompleteShipments.map(x => `<li><b>${esc(x.file)} · ${esc(x.reference || "Shipment")}</b><span>Missing ${!x.origin ? "origin" : "destination"}</span></li>`).join("");
+  const items = links + shipments;
+  return `${eyebrow(`Review queue · ${w.needsReview} pending`)}<div class="page-head"><h1>Evidence needed</h1></div><p class="lede">This queue is shared with the document dashboard and updates after every upload.</p>${card(items ? `<ul class="workspace-review">${items}</ul>` : note("Nothing needs review."))}`;
 }
 
 async function queueItem(rec, detail) {
@@ -498,12 +757,15 @@ async function obligationItem(o, withActions) {
 // --------------------------------------------------------------------------- memo + export
 
 async function pageMemo() {
-  if (!S.loaded) return `${eyebrow("Memo")}<h1>No dataset loaded</h1>`;
-  const text = await get("/memo");
-  const html = window.marked ? marked.parse(text) : `<pre>${esc(text)}</pre>`;
-  return `${eyebrow("Reports")}
-    <div class="page-head"><h1>Audit memo</h1><a class="btn" href="/memo" download="sherlock_audit_memo.md">Download .md</a></div>
-    ${card(`<div class="memo">${html}</div>`)}`;
+  if (!S.workspaceId) return `${eyebrow("TODO")}<h1>Choose a document set first</h1><a class="btn primary" href="#documents">Back to desktop</a>`;
+  const result = await get(`/todo?workspace_id=${encodeURIComponent(S.workspaceId)}`);
+  S.todos = result.todos || [];
+  const rows = S.todos;
+  const body = rows.map((row, index) => { const amount = row.amount_original !== "" && row.amount_original !== undefined ? ` · ${esc(row.currency)} ${Number(row.amount_original).toLocaleString("en-US", {minimumFractionDigits: 2})}${row.amount_usd !== "" && row.amount_usd !== undefined ? ` · ≈ ${formatConvertedUsd(row.amount_usd)}` : ""}` : ""; const urgency = String(row.urgency || "medium").toLowerCase(); return `<article class="todo-item"><div class="todo-check" aria-hidden="true"></div><div><h3>${index + 1}. ${esc(row.task)} <span class="todo-urgency ${esc(urgency)}">${esc(urgency)} priority</span></h3><small>To: ${esc(row.recipient || "contact not identified")} · ${esc(row.source_file)} · page ${esc(row.page)}${amount}</small><details><summary>View suggested email</summary><label>Subject</label><input class="todo-subject" readonly value="${esc(row.email_subject || row.task)}"><label>Draft</label><textarea class="todo-email" readonly>${esc(row.email_body || "")}</textarea><button class="btn" data-copy-email="${index}">Copy email</button><span class="copy-status" id="copy-status-${index}"></span></details><p class="todo-reason">Evidence: ${esc(row.reason)}</p></div></article>`; }).join("");
+  const set = S.documentSets.find(x => x.id === S.workspaceId);
+  return `${eyebrow(`TODO · ${set?.name || "document set"}`)}
+    <div class="page-head"><div><h1>Secretary TODO</h1><p class="lede">Small tasks linked to the evidence in this document set.</p></div><div class="btn-row"><a class="btn" href="/todo.pdf?workspace_id=${encodeURIComponent(S.workspaceId)}" download>PDF</a><a class="btn primary" href="/todo.xlsx?workspace_id=${encodeURIComponent(S.workspaceId)}" download>Excel</a></div></div>
+    <section class="todo-whiteboard" aria-label="TODO whiteboard"><header class="board-heading"><span>✎ &nbsp; The follow-up board</span><small>${rows.length} notes · Open a note to copy its email</small></header><div class="todo-list">${body || note("All clear. No follow-ups found in these documents.")}</div></section>`;
 }
 
 async function pageExport() {
@@ -516,7 +778,8 @@ async function pageExport() {
   const owed = pr.reduce((a, r) => a + Number(r.amount_cents || 0), 0);
   return `${eyebrow("Accounting")}
     <div class="page-head"><h1>Exports</h1></div>
-    <p class="lede">Download journal entries and confirmed customer payables. Exports are not posted or sent.</p>
+    <p class="lede">Download journal entries, confirmed customer payables, or the TODO list for this document set.</p>
+    ${S.workspaceId ? card(`${eyebrow("Secretary TODO")}<p class="dim">Export every open task and its PDF evidence reason.</p><div class="btn-row"><a class="btn" href="/todo.pdf?workspace_id=${encodeURIComponent(S.workspaceId)}" download>TODO PDF</a><a class="btn primary" href="/todo.xlsx?workspace_id=${encodeURIComponent(S.workspaceId)}" download>TODO Excel</a></div>`) : ""}
     <div class="grid tiles">
       ${card(`${eyebrow("Journal lines")}<b>${jr.length}</b><small>one cash debit, one credit per ledger line</small>`, "tile")}
       ${card(`${eyebrow("Debits")}<b>${formatCents(deb)}</b>`, "tile money")}
@@ -531,22 +794,34 @@ async function pageExport() {
 
 // --------------------------------------------------------------------------- router + events
 
-const RENDER = { documents: pageDocuments, overview: pageOverview, ledger: pageLedger, review: pageReview, memo: pageMemo, export: pageExport };
+const RENDER = { documents: pageDocuments, today: pageToday, workspace: pageWorkspace, intake: pageIntake, overview: pageOverview, ledger: pageLedger, timeline: pageTimeline, memo: pageMemo, export: pageExport };
 
 async function render() {
   const main = document.getElementById("main");
+  const version = ++renderVersion;
+  const page = S.page;
   try {
+    // Refresh the shell independently of the page body. Every page function then
+    // fetches its own endpoint, so Ledger/Review/Memo/Export do not depend on
+    // Overview having rendered first.
     await refreshSummary();
-    main.innerHTML = await RENDER[S.page]();
-    if (S.page === "documents") mountShipmentMaps(S.uploads);
+    if (version !== renderVersion || page !== S.page) return;
+    const html = await RENDER[page]();
+    if (version !== renderVersion || page !== S.page) return;
+    main.innerHTML = html;
+    if (page === "intake") mountShipmentMaps(S.uploads);
   } catch (e) {
+    if (version !== renderVersion || page !== S.page) return;
     main.innerHTML = note(e.message, "error");
   }
 }
 
 function route() {
   const id = (location.hash || "#documents").slice(1);
-  S.page = RENDER[id] ? id : "documents";
+  if (id.startsWith("workspace/")) {
+    S.workspaceId = decodeURIComponent(id.slice("workspace/".length));
+    S.page = "workspace";
+  } else S.page = RENDER[id] ? id : "documents";
   window.scrollTo(0, 0);
   renderNav();
   render();
@@ -560,11 +835,64 @@ function reasonOf(id, errId) {
 }
 
 async function act(fn) {
-  try { await fn(); await render(); }
+  try {
+    const result = await fn();
+    // Mutation endpoints return the fresh ledger summary. Apply it immediately
+    // so the dashboard chrome and whichever page is open stay in sync together.
+    if (result && result.summary) {
+      S.summary = result.summary;
+      S.queueCount = result.summary.queue_count;
+      renderTopbar(); renderNav();
+    }
+    await render();
+  }
   catch (e) { document.getElementById("main").insertAdjacentHTML("afterbegin", note(e.message, "error")); window.scrollTo(0, 0); }
 }
 
+function openNewSetDialog() {
+  const dialog = document.getElementById("set-dialog");
+  const input = document.getElementById("set-name");
+  const error = document.getElementById("set-error");
+  error.textContent = "";
+  input.value = "";
+  dialog.showModal();
+  requestAnimationFrame(() => input.focus());
+}
+
 document.addEventListener("click", async e => {
+  const country = e.target.closest("[data-country]");
+  if (country) {
+    country.closest("details")?.removeAttribute("open");
+    try { await setCurrency(country.dataset.currency, country.dataset.country); } catch (error) { document.getElementById("main").insertAdjacentHTML("afterbegin", note(error.message, "error")); }
+    return;
+  }
+  const newSet = e.target.closest("[data-new-set]");
+  if (newSet) {
+    openNewSetDialog();
+    return;
+  }
+  const deleteSet = e.target.closest("[data-delete-set]");
+  if (deleteSet) {
+    const set = S.documentSets.find(item => item.id === deleteSet.dataset.deleteSet);
+    if (!set || !window.confirm(`Delete “${set.name}” and all PDFs in it? This cannot be undone.`)) return;
+    return act(async () => {
+      await api("DELETE", `/workspaces/${encodeURIComponent(set.id)}`);
+      S.workspaceId = null;
+      location.hash = "#documents";
+    });
+  }
+  const copyEmail = e.target.closest("[data-copy-email]");
+  if (copyEmail) {
+    const index = Number(copyEmail.dataset.copyEmail);
+    const row = (S.todos || [])[index];
+    if (!row) return;
+    const text = `Subject: ${row.email_subject || row.task}\n\n${row.email_body || ""}`;
+    try { await navigator.clipboard.writeText(text); document.getElementById(`copy-status-${index}`).textContent = "Copied"; }
+    catch (_) { document.getElementById(`copy-status-${index}`).textContent = "Select and copy manually"; }
+    return;
+  }
+  const cancelSet = e.target.closest("[data-new-set-cancel]");
+  if (cancelSet) { document.getElementById("set-dialog").close(); return; }
   const choose = e.target.closest("[data-choose-files]");
   if (choose) { document.getElementById("pdf-picker").click(); return; }
   const view = e.target.closest("[data-ledger-view]");
@@ -650,12 +978,48 @@ document.addEventListener("click", async e => {
   if (reset) return act(async () => { await post(`/datasets/${encodeURIComponent(reset.dataset.reset)}/seed`); });
 });
 
+document.addEventListener("submit", e => {
+  if (e.target.id !== "watson-form") return;
+  e.preventDefault();
+  const input = document.getElementById("watson-question");
+  const question = input?.value.trim();
+  if (!question) return;
+  input.value = "";
+  askWatson(question);
+});
+
+document.getElementById("set-form").addEventListener("submit", async e => {
+  e.preventDefault();
+  const input = document.getElementById("set-name");
+  const error = document.getElementById("set-error");
+  const submit = document.getElementById("set-submit");
+  const name = input.value.trim();
+  if (!name) { error.textContent = "Enter a name for this document set."; input.focus(); return; }
+  error.textContent = "";
+  submit.disabled = true;
+  try {
+    const created = await post("/workspaces", { name });
+    document.getElementById("set-dialog").close();
+    location.hash = `#workspace/${encodeURIComponent(created.id)}`;
+  } catch (err) {
+    error.textContent = err.message;
+    input.focus();
+  } finally {
+    submit.disabled = false;
+  }
+});
+
 document.addEventListener("change", e => {
   if (e.target.id === "pdf-picker") { handleFiles(e.target.files).catch(err => { document.getElementById("upload-status").innerHTML = note(err.message, "error"); }); return; }
   if (["f-status", "f-customer"].includes(e.target.id)) applyLedgerFilters();
+  if (e.target.id === "active-set-select" && e.target.value) location.hash = `#workspace/${encodeURIComponent(e.target.value)}`;
 });
 document.addEventListener("input", e => {
   if (e.target.id === "f-search") applyLedgerFilters();
+  if (e.target.id === "country-search") {
+    const query = e.target.value.toLowerCase().trim();
+    document.querySelectorAll(".country-option").forEach(option => { option.hidden = !option.textContent.toLowerCase().includes(query); });
+  }
 });
 document.getElementById("reviewer").addEventListener("input", e => {
   S.actor = e.target.value.trim();
@@ -679,9 +1043,19 @@ async function boot() {
   try {
     const cfg = await get("/config");
     S.threshold = cfg.auto_threshold;
+    S.mapboxToken = cfg.mapbox_access_token || "";
     let saved = "";
     try { saved = localStorage.getItem("sherlock.actor") || ""; } catch (_) { /* private mode */ }
     S.actor = saved || cfg.demo_actor || "";
+    let savedCurrency = "USD";
+    let savedCountry = "US";
+    try { savedCurrency = localStorage.getItem("sherlock.currency") || "USD"; } catch (_) { /* private mode */ }
+    try { savedCountry = localStorage.getItem("sherlock.country") || "US"; } catch (_) { /* private mode */ }
+    try {
+      const fx = await get(`/fx-rate?currency=${encodeURIComponent(savedCurrency)}`);
+      S.country = COUNTRIES.some(x => x[0] === savedCountry && x[2] === fx.currency) ? savedCountry : (COUNTRIES.find(x => x[2] === fx.currency)?.[0] || "US");
+      S.currency = fx.currency; S.fxRate = Number(fx.rate) || 1; S.fxDate = fx.date || "";
+    } catch (_) { /* keep USD if the rate service is unavailable */ }
   } catch (e) { document.getElementById("main").innerHTML = note(e.message, "error"); }
   route();
 }

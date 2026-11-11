@@ -9,12 +9,31 @@
 <script src="https://cdn.tailwindcss.com"></script>
 <script>tailwind.config = { corePlugins: { preflight: false } }</script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
-<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@6.17.0/dist/maplibre-gl.css">
+<link rel="stylesheet" href="https://api.mapbox.com/mapbox-gl-js/v3.33.0/mapbox-gl.css">
+<script src="https://api.mapbox.com/mapbox-gl-js/v3.33.0/mapbox-gl.js"></script>
 <link rel="stylesheet" href="/static/styles.css">
 </head>
 <body>
 <div id="progress"></div>
-<div class="loading-screen" id="loading-screen" aria-live="polite" aria-hidden="true"><div class="mouse-orbit" id="mouse-orbit"></div><div class="loading-copy"><span>SHERLOCK / ANALYZING</span><b>Tracing the flow</b><small>Reading documents and joining the evidence.</small><a href="https://skiper-ui.com/v1/skiper61" target="_blank" rel="noreferrer">Motion pattern: Skiper UI</a></div></div>
+<div class="loading-screen" id="loading-screen" aria-live="polite" aria-hidden="true"><div class="mouse-orbit" id="mouse-orbit"></div><div class="loading-copy"><b>Sherlock is searching</b></div></div>
+<dialog class="set-dialog" id="set-dialog" aria-labelledby="set-dialog-title">
+  <form id="set-form" method="dialog">
+    <div class="set-dialog-copy">
+      <p class="eyebrow">New document set</p>
+      <h2 id="set-dialog-title">Name this document set</h2>
+      <p>Files and records in this set stay separate from every other worker’s set.</p>
+    </div>
+    <label class="smooth-input" for="set-name">
+      <span class="sr-only">Document set name</span>
+      <input id="set-name" name="name" type="text" maxlength="80" autocomplete="off" placeholder="e.g. November imports" required>
+    </label>
+    <p class="set-error" id="set-error" role="alert"></p>
+    <div class="set-dialog-actions">
+      <button class="btn" type="button" data-new-set-cancel>Cancel</button>
+      <button class="btn primary" id="set-submit" type="submit">Create set</button>
+    </div>
+  </form>
+</dialog>
 <div class="shell">
   <aside class="sidebar">
     <div class="wordmark"><i class="mark"></i><span>Sherlock</span></div>

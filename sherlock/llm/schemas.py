@@ -79,8 +79,20 @@ class PacketExtraction(Strict):
     missing_links: list[str] = Field(description="Links needed to connect the money flow that are absent from the packet")
 
 
+class ChatSource(Strict):
+    file: str = Field(description="Uploaded source filename")
+    page: int = Field(description="1-based source page")
+    quote: str = Field(description="Short supporting evidence from the uploaded analysis")
+
+
+class ChatAnswer(Strict):
+    answer: str = Field(description="A concise, plain-language answer grounded only in the provided document set")
+    sources: list[ChatSource] = Field(description="The smallest set of source references supporting the answer")
+
+
 TASK_SCHEMAS: dict[str, type[BaseModel]] = {
     "contract_extract": ContractExtraction,
     "scan_extract": ScanExtraction,
     "packet_extract": PacketExtraction,
+    "chat": ChatAnswer,
 }
