@@ -4,6 +4,7 @@
 
 const PAGES = [
   ["documents", "Documents", "M6 3h8l4 4v14H6z M14 3v5h5 M9 13h6 M9 17h6"],
+  ["today", "Today", "M12 3a9 9 0 1 0 9 9 M12 7v5l3 2"],
   ["overview", "Overview", "M3 3h18v18H3z M3 9h18 M9 21V9"],
   ["ledger", "Ledger", "M4 5h16 M4 12h16 M4 19h10"],
   ["timeline", "Timeline", "M5 5h14 M5 12h9 M5 19h14 M8 5v14"],
@@ -463,6 +464,27 @@ async function handleFiles(files) {
 
 // --------------------------------------------------------------------------- overview
 
+async function pageToday() {
+  if (!S.workspaceId) return `${eyebrow("Today")}<h1>Choose a document set first</h1><p class="lede">Your daily work view appears here after you open a document set.</p><a class="btn primary" href="#documents">Open documents</a>`;
+  const set = S.documentSets.find(x => x.id === S.workspaceId);
+  const w = S.workspace;
+  if (!w.documents) return `${eyebrow(`Today · ${set?.name || "document set"}`)}<h1>Nothing to review yet</h1><p class="lede">Upload a packet and Sherlock will turn it into money, evidence, and follow-up actions.</p><a class="btn primary" href="#intake">Upload documents</a>`;
+  const todoResult = await get(`/todo?workspace_id=${encodeURIComponent(S.workspaceId)}`);
+  const todos = (todoResult.todos || []).slice(0, 5);
+  const healthTotal = w.documents + w.records.length + w.missing.length + w.incompleteShipments.length;
+  const healthDone = w.documents + w.records.length;
+  const health = healthTotal ? Math.round((healthDone / healthTotal) * 100) : 0;
+  const reviewRows = [...w.missing.map(x => ({ label: "Evidence missing", detail: `${x.file} · ${x.text}` })), ...w.incompleteShipments.map(x => ({ label: "Location missing", detail: `${x.file} · ${x.origin || "origin unknown"} → ${x.destination || "destination unknown"}` }))].slice(0, 4);
+  const reviewHtml = reviewRows.length ? reviewRows.map(x => `<li><span class="today-dot"></span><div><b>${esc(x.label)}</b><small>${esc(x.detail)}</small></div></li>`).join("") : `<li class="today-clear"><span>✓</span><div><b>Nothing is waiting for review</b><small>The packet has no missing links or shipment locations.</small></div></li>`;
+  const todoHtml = todos.length ? todos.map((row, i) => `<li><span class="today-priority ${esc(row.urgency || "medium")}">${i + 1}</span><div><b>${esc(row.task)}</b><small>${esc(row.reason || "Evidence-linked follow-up")} · ${esc(row.source_file || "source document")} p.${esc(row.page || "?")}</small></div><a class="btn" href="#memo">Review</a></li>`).join("") : `<li class="today-clear"><span>✓</span><div><b>No follow-ups found</b><small>Upload more documents if you expected a task here.</small></div></li>`;
+  return `${eyebrow(`Today · ${set?.name || "document set"}`)}
+    <div class="today-hero"><div><h1>What needs your attention?</h1><p class="lede">Sherlock read this packet and pulled the important work to the top.</p></div><a class="btn" href="#overview">Open full dashboard</a></div>
+    <section class="today-money card"><div><span class="eyebrow">Money pending</span><strong>${formatCents(w.moneyPending)}</strong><p>${w.records.filter(r => r.direction === "unknown").length} records still need a direction or payment status.</p></div><a class="btn primary" href="#ledger">Review money</a></section>
+    <div class="today-grid"><section class="today-panel card"><div class="today-panel-head"><div><span class="eyebrow">Packet health</span><h2>${health}% ready</h2></div><span class="pill ${health >= 80 ? "ok" : "bad"}">${w.needsReview ? `${w.needsReview} items need review` : "Ready"}</span></div><div class="today-progress"><i style="width:${health}%"></i></div><p class="today-caption">${w.records.length} extracted records · ${w.documents} document${w.documents === 1 ? "" : "s"} · ${w.incompleteShipments.length} shipment location${w.incompleteShipments.length === 1 ? "" : "s"} incomplete</p><ul class="today-list today-review-list">${reviewHtml}</ul></section>
+      <section class="today-panel card"><div class="today-panel-head"><div><span class="eyebrow">Next actions</span><h2>${todos.length} follow-up${todos.length === 1 ? "" : "s"}</h2></div><a class="btn" href="#memo">Open all</a></div><ul class="today-list">${todoHtml}</ul></section></div>
+    <div class="today-links"><a href="#intake">Add documents</a><a href="#timeline">See shipment timeline</a><a href="#memo">Open follow-up board</a></div>`;
+}
+
 async function pageOverview() {
   if (!S.loaded) return workspaceOverview();
   const led = await get("/ledger");
@@ -721,7 +743,7 @@ async function pageExport() {
 
 // --------------------------------------------------------------------------- router + events
 
-const RENDER = { documents: pageDocuments, workspace: pageWorkspace, intake: pageIntake, overview: pageOverview, ledger: pageLedger, timeline: pageTimeline, memo: pageMemo, export: pageExport };
+const RENDER = { documents: pageDocuments, today: pageToday, workspace: pageWorkspace, intake: pageIntake, overview: pageOverview, ledger: pageLedger, timeline: pageTimeline, memo: pageMemo, export: pageExport };
 
 async function render() {
   const main = document.getElementById("main");
