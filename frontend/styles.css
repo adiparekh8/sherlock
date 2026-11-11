@@ -52,6 +52,30 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .pill.review { color: var(--review); border-color: rgba(245, 165, 36, 0.4); background: var(--accent-dim); }
 .pill.auto { color: var(--auto); border-color: rgba(108, 160, 255, 0.4); background: rgba(108, 160, 255, 0.08); }
 .topbar .spacer { flex: 1; }
+.topbar-tools { display: flex; align-items: center; justify-content: flex-end; gap: 8px; min-width: 0; }
+.topbar-set-select { max-width: 190px; height: 32px; border: 1px solid var(--border); border-radius: 999px; padding: 0 30px 0 12px; background: var(--raised); color: var(--text); font: 11px var(--mono); outline: none; }
+.topbar-set-select:focus { border-color: var(--accent); }
+.watson-bar { position: relative; display: flex; align-items: center; width: min(330px, 28vw); height: 32px; border: 1px solid var(--border); border-radius: 999px; background: var(--raised); overflow: visible; }
+.watson-mark { padding-left: 11px; color: var(--accent); }
+.watson-bar input { min-width: 0; flex: 1; height: 30px; border: 0; outline: 0; padding: 0 8px; background: transparent; font-size: 11px; }
+.watson-bar input::placeholder { color: var(--muted); }
+.watson-bar button { height: 26px; margin-right: 3px; padding: 0 10px; border: 0; border-radius: 999px; background: var(--accent); color: #fff; font: 11px var(--mono); cursor: pointer; }
+.watson-bar button:disabled { opacity: .45; cursor: not-allowed; }
+.watson-answer { position: absolute; top: 39px; right: 0; z-index: 30; width: min(430px, calc(100vw - 40px)); padding: 14px 16px; border: 1px solid var(--border); border-radius: 10px; background: var(--panel); box-shadow: 0 16px 40px #20251d22; color: var(--text); font-size: 12px; line-height: 1.5; }
+.watson-answer p { margin: 6px 0; }
+.watson-answer small { color: var(--muted); font: 10px var(--mono); }
+.watson-answer ul { margin: 5px 0 0; padding-left: 16px; color: var(--text-2); font-size: 11px; }
+.watson-answer.loading { color: var(--text-2); }
+.watson-answer.error { color: var(--conflict); }
+.country-picker { position: relative; }
+.country-picker summary { display: flex; align-items: center; gap: 5px; height: 32px; padding: 0 10px; border: 1px solid var(--border); border-radius: 999px; background: var(--raised); cursor: pointer; list-style: none; font: 11px var(--mono); }
+.country-picker summary::-webkit-details-marker { display: none; }
+.country-menu { position: absolute; top: 39px; right: 0; z-index: 30; width: 250px; padding: 10px; border: 1px solid var(--border); border-radius: 10px; background: var(--panel); box-shadow: 0 16px 40px #20251d22; }
+.country-menu input { width: 100%; height: 30px; margin-bottom: 7px; padding: 0 9px; border: 1px solid var(--border); border-radius: 6px; background: var(--raised); outline: none; font-size: 12px; }
+.country-menu input:focus { border-color: var(--accent); }
+.country-option { display: grid; grid-template-columns: 22px 1fr auto; align-items: center; gap: 7px; width: 100%; padding: 8px 6px; border: 0; border-radius: 5px; background: transparent; color: var(--text); text-align: left; cursor: pointer; font-size: 12px; }
+.country-option:hover { background: var(--accent-dim); }
+.country-option small { color: var(--muted); font: 10px var(--mono); }
 
 main { padding: 28px; min-height: calc(100vh - var(--topbar)); }
 h1 { font-size: 28px; font-weight: 600; letter-spacing: -0.02em; margin: 2px 0 20px; }
@@ -83,6 +107,7 @@ h1 { font-size: 28px; font-weight: 600; letter-spacing: -0.02em; margin: 2px 0 2
 .today-links { display: flex; gap: 18px; flex-wrap: wrap; margin-top: 20px; color: var(--accent); font: 12px var(--mono); }
 .today-links a:hover { text-decoration: underline; }
 @media (max-width: 760px) { .today-hero, .today-money { align-items: start; flex-direction: column; }.today-grid { grid-template-columns: 1fr; } }
+@media (max-width: 900px) { .topbar { gap: 10px; padding: 0 14px; }.topbar > .stat { display: none; }.topbar-tools { width: 100%; }.watson-bar { width: auto; flex: 1; }.topbar-set-select { max-width: 150px; } }
 
 /* Content panels */
 .card { position: relative; background: var(--panel); border: 1px solid var(--border); border-radius: 6px; padding: 20px; transition: border-color var(--ease); }

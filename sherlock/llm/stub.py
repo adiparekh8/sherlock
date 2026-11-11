@@ -134,4 +134,8 @@ def scan_extract(_input) -> dict:
                      "not read. Run make llm-cache with a key."}
 
 
-STUBS = {"contract_extract": contract_extract, "scan_extract": scan_extract}
+def chat_stub(_input) -> dict:
+    return {"answer": "Claude Dr. Watson is not connected. Add ANTHROPIC_API_KEY to let me answer from this document set.", "sources": []}
+
+
+STUBS = {"contract_extract": contract_extract, "scan_extract": scan_extract, "chat": chat_stub}

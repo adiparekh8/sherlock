@@ -11,7 +11,14 @@ const PAGES = [
   ["memo", "TODO", "M6 3h9l5 5v13H6z M14 3v6h6 M9 13h6 M9 17h6"],
 ];
 
-const S = { page: "documents", datasets: [], documentSets: [], workspaceId: null, loaded: null, summary: null, refund: null, threshold: 0.8, actor: "", queueCount: 0, uploads: [], selectedUpload: null };
+const COUNTRIES = [
+  ["US", "United States", "USD", "🇺🇸"], ["GB", "United Kingdom", "GBP", "🇬🇧"], ["DE", "Germany", "EUR", "🇩🇪"],
+  ["FR", "France", "EUR", "🇫🇷"], ["IT", "Italy", "EUR", "🇮🇹"], ["ES", "Spain", "EUR", "🇪🇸"],
+  ["CA", "Canada", "CAD", "🇨🇦"], ["AU", "Australia", "AUD", "🇦🇺"], ["JP", "Japan", "JPY", "🇯🇵"],
+  ["CH", "Switzerland", "CHF", "🇨🇭"], ["CN", "China", "CNY", "🇨🇳"], ["IN", "India", "INR", "🇮🇳"],
+  ["MX", "Mexico", "MXN", "🇲🇽"], ["SG", "Singapore", "SGD", "🇸🇬"]
+];
+const S = { page: "documents", datasets: [], documentSets: [], workspaceId: null, loaded: null, summary: null, threshold: 0.8, actor: "", queueCount: 0, uploads: [], selectedUpload: null, country: "US", currency: "USD", fxRate: 1, fxDate: "" };
 
 // --------------------------------------------------------------------------- helpers
 
@@ -20,9 +27,12 @@ function formatCents(cents) {
   const n = Number(cents);
   if (!Number.isInteger(n)) return "";
   const sign = n < 0 ? "-" : "";
-  const abs = Math.abs(n);
-  return `${sign}$${Math.floor(abs / 100).toLocaleString("en-US")}.${String(abs % 100).padStart(2, "0")}`;
+  const converted = Math.round(n * (Number(S.fxRate) || 1));
+  const abs = Math.abs(converted);
+  return `${sign}${currencySymbol(S.currency)}${Math.floor(abs / 100).toLocaleString("en-US")}.${String(abs % 100).padStart(2, "0")}`;
 }
+function currencySymbol(code) { return ({ USD: "$", EUR: "€", GBP: "£", CAD: "CA$", AUD: "A$", JPY: "¥", CHF: "CHF ", CNY: "¥", INR: "₹", MXN: "MX$", SGD: "S$" }[code] || `${code} `); }
+function formatConvertedUsd(amountUsd) { const cents = Math.round(Number(amountUsd || 0) * 100); return formatCents(cents); }
 function toDollarsInput(cents) { const n = Number(cents) || 0; return `${n < 0 ? "-" : ""}${Math.floor(Math.abs(n) / 100)}.${String(Math.abs(n) % 100).padStart(2, "0")}`; }
 function toCents(text) {
   // "5,285.23" -> 528523. Null unless it is a dollar amount with at most two decimals. No floats anywhere.
@@ -107,7 +117,10 @@ function renderTopbar() {
   if (!S.summary) {
     const w = S.workspace;
     const set = S.documentSets.find(x => x.id === S.workspaceId);
-    el.innerHTML = w?.documents ? `<div class="stat"><span>Documents</span><b>${w.documents}</b></div><div class="stat"><span>Money in</span><b>${formatCents(w.moneyIn)}</b></div><div class="stat"><span>Money out</span><b>${formatCents(w.moneyOut)}</b></div><div class="stat pending"><span>Money pending</span><b>${formatCents(w.moneyPending)}</b></div><div class="stat pending"><span>Needs review</span><b>${w.needsReview}</b></div><div class="spacer"></div><div class="stat"><span>Active document set</span><b class="dim">${esc(set?.name || "None")}</b></div>` : `<div class="stat"><span>Active document set</span><b class="dim">${esc(set?.name || "None")}</b></div>`;
+    const sets = `<select class="topbar-set-select" id="active-set-select" aria-label="Active document set"><option value="${set ? esc(set.id) : ""}">${set ? esc(set.name) : "Choose document set"}</option>${S.documentSets.filter(x => x.id !== S.workspaceId).map(x => `<option value="${esc(x.id)}">${esc(x.name)}</option>`).join("")}</select>`;
+    const countries = COUNTRIES.map(([code, name, currency, flag]) => `<button type="button" class="country-option" data-country="${code}" data-currency="${currency}"><span>${flag}</span><span>${esc(name)}</span><small>${currency}</small></button>`).join("");
+    const tools = `<div class="topbar-tools"><form class="watson-bar" id="watson-form"><span class="watson-mark">✦</span><input id="watson-question" ${S.workspaceId ? "" : "disabled"} placeholder="Ask Claude Dr. Watson…" aria-label="Ask Claude Dr. Watson"><button type="submit" ${S.workspaceId ? "" : "disabled"}>Ask</button><div id="watson-answer" class="watson-answer" hidden></div></form><details class="country-picker"><summary><span>${COUNTRIES.find(x => x[0] === S.country)?.[3] || "🌐"}</span> ${S.currency}</summary><div class="country-menu"><input type="search" id="country-search" placeholder="Search country or currency" aria-label="Search country or currency"><div id="country-options">${countries}</div></div></details>${sets}</div>`;
+    el.innerHTML = w?.documents ? `<div class="stat"><span>Documents</span><b>${w.documents}</b></div><div class="stat"><span>Money in</span><b>${formatCents(w.moneyIn)}</b></div><div class="stat"><span>Money out</span><b>${formatCents(w.moneyOut)}</b></div><div class="stat pending"><span>Money pending</span><b>${formatCents(w.moneyPending)}</b></div><div class="stat pending"><span>Needs review</span><b>${w.needsReview}</b></div><div class="spacer"></div>${tools}` : `<div class="spacer"></div>${tools}`;
     return;
   }
   const s = S.summary;
@@ -120,6 +133,38 @@ function renderTopbar() {
     <div class="stat"><span>Balance</span>${pill}</div>
     <div class="spacer"></div>
     <div class="stat"><span>Refund id</span><b class="dim">${esc(s.refund_id)}</b></div>`;
+}
+
+async function setCurrency(code, country = S.country) {
+  const result = await get(`/fx-rate?currency=${encodeURIComponent(code)}`);
+  S.country = country || COUNTRIES.find(x => x[2] === result.currency)?.[0] || "US";
+  S.currency = result.currency;
+  S.fxRate = Number(result.rate) || 1;
+  S.fxDate = result.date || "";
+  try { localStorage.setItem("sherlock.currency", S.currency); localStorage.setItem("sherlock.country", S.country); } catch (_) { /* private mode */ }
+  renderTopbar();
+  await render();
+}
+
+async function askWatson(question) {
+  const answer = document.getElementById("watson-answer");
+  const button = document.querySelector("#watson-form button[type=submit]");
+  if (!answer || !S.workspaceId) return;
+  answer.hidden = false;
+  answer.className = "watson-answer loading";
+  answer.textContent = "Dr. Watson is reading this document set…";
+  if (button) button.disabled = true;
+  try {
+    const result = await post("/chat", { workspace_id: S.workspaceId, question });
+    const sources = (result.sources || []).map(source => `<li>${esc(source.file)} · page ${esc(source.page)}${source.quote ? ` — ${esc(source.quote)}` : ""}</li>`).join("");
+    answer.className = "watson-answer";
+    answer.innerHTML = `<b>Dr. Watson</b><p>${esc(result.answer)}</p>${sources ? `<small>Sources</small><ul>${sources}</ul>` : ""}`;
+  } catch (error) {
+    answer.className = "watson-answer error";
+    answer.textContent = error.message;
+  } finally {
+    if (button) button.disabled = false;
+  }
 }
 
 function renderSidebar() {
@@ -710,7 +755,7 @@ async function pageMemo() {
   const result = await get(`/todo?workspace_id=${encodeURIComponent(S.workspaceId)}`);
   S.todos = result.todos || [];
   const rows = S.todos;
-  const body = rows.map((row, index) => { const amount = row.amount_original !== "" && row.amount_original !== undefined ? ` · ${esc(row.currency)} ${Number(row.amount_original).toLocaleString("en-US", {minimumFractionDigits: 2})}${row.amount_usd !== "" && row.amount_usd !== undefined ? ` · ≈ USD $${Number(row.amount_usd).toLocaleString("en-US", {minimumFractionDigits: 2})}` : ""}` : ""; const urgency = String(row.urgency || "medium").toLowerCase(); return `<article class="todo-item"><div class="todo-check" aria-hidden="true"></div><div><h3>${index + 1}. ${esc(row.task)} <span class="todo-urgency ${esc(urgency)}">${esc(urgency)} priority</span></h3><small>To: ${esc(row.recipient || "contact not identified")} · ${esc(row.source_file)} · page ${esc(row.page)}${amount}</small><details><summary>View suggested email</summary><label>Subject</label><input class="todo-subject" readonly value="${esc(row.email_subject || row.task)}"><label>Draft</label><textarea class="todo-email" readonly>${esc(row.email_body || "")}</textarea><button class="btn" data-copy-email="${index}">Copy email</button><span class="copy-status" id="copy-status-${index}"></span></details><p class="todo-reason">Evidence: ${esc(row.reason)}</p></div></article>`; }).join("");
+  const body = rows.map((row, index) => { const amount = row.amount_original !== "" && row.amount_original !== undefined ? ` · ${esc(row.currency)} ${Number(row.amount_original).toLocaleString("en-US", {minimumFractionDigits: 2})}${row.amount_usd !== "" && row.amount_usd !== undefined ? ` · ≈ ${formatConvertedUsd(row.amount_usd)}` : ""}` : ""; const urgency = String(row.urgency || "medium").toLowerCase(); return `<article class="todo-item"><div class="todo-check" aria-hidden="true"></div><div><h3>${index + 1}. ${esc(row.task)} <span class="todo-urgency ${esc(urgency)}">${esc(urgency)} priority</span></h3><small>To: ${esc(row.recipient || "contact not identified")} · ${esc(row.source_file)} · page ${esc(row.page)}${amount}</small><details><summary>View suggested email</summary><label>Subject</label><input class="todo-subject" readonly value="${esc(row.email_subject || row.task)}"><label>Draft</label><textarea class="todo-email" readonly>${esc(row.email_body || "")}</textarea><button class="btn" data-copy-email="${index}">Copy email</button><span class="copy-status" id="copy-status-${index}"></span></details><p class="todo-reason">Evidence: ${esc(row.reason)}</p></div></article>`; }).join("");
   const set = S.documentSets.find(x => x.id === S.workspaceId);
   return `${eyebrow(`TODO · ${set?.name || "document set"}`)}
     <div class="page-head"><div><h1>Secretary TODO</h1><p class="lede">Small tasks linked to the evidence in this document set.</p></div><div class="btn-row"><a class="btn" href="/todo.pdf?workspace_id=${encodeURIComponent(S.workspaceId)}" download>PDF</a><a class="btn primary" href="/todo.xlsx?workspace_id=${encodeURIComponent(S.workspaceId)}" download>Excel</a></div></div>
@@ -809,6 +854,12 @@ function openNewSetDialog() {
 }
 
 document.addEventListener("click", async e => {
+  const country = e.target.closest("[data-country]");
+  if (country) {
+    country.closest("details")?.removeAttribute("open");
+    try { await setCurrency(country.dataset.currency, country.dataset.country); } catch (error) { document.getElementById("main").insertAdjacentHTML("afterbegin", note(error.message, "error")); }
+    return;
+  }
   const newSet = e.target.closest("[data-new-set]");
   if (newSet) {
     openNewSetDialog();
@@ -921,6 +972,16 @@ document.addEventListener("click", async e => {
   if (reset) return act(async () => { await post(`/datasets/${encodeURIComponent(reset.dataset.reset)}/seed`); });
 });
 
+document.addEventListener("submit", e => {
+  if (e.target.id !== "watson-form") return;
+  e.preventDefault();
+  const input = document.getElementById("watson-question");
+  const question = input?.value.trim();
+  if (!question) return;
+  input.value = "";
+  askWatson(question);
+});
+
 document.getElementById("set-form").addEventListener("submit", async e => {
   e.preventDefault();
   const input = document.getElementById("set-name");
@@ -945,9 +1006,14 @@ document.getElementById("set-form").addEventListener("submit", async e => {
 document.addEventListener("change", e => {
   if (e.target.id === "pdf-picker") { handleFiles(e.target.files).catch(err => { document.getElementById("upload-status").innerHTML = note(err.message, "error"); }); return; }
   if (["f-status", "f-customer"].includes(e.target.id)) applyLedgerFilters();
+  if (e.target.id === "active-set-select" && e.target.value) location.hash = `#workspace/${encodeURIComponent(e.target.value)}`;
 });
 document.addEventListener("input", e => {
   if (e.target.id === "f-search") applyLedgerFilters();
+  if (e.target.id === "country-search") {
+    const query = e.target.value.toLowerCase().trim();
+    document.querySelectorAll(".country-option").forEach(option => { option.hidden = !option.textContent.toLowerCase().includes(query); });
+  }
 });
 document.getElementById("reviewer").addEventListener("input", e => {
   S.actor = e.target.value.trim();
@@ -975,6 +1041,15 @@ async function boot() {
     let saved = "";
     try { saved = localStorage.getItem("sherlock.actor") || ""; } catch (_) { /* private mode */ }
     S.actor = saved || cfg.demo_actor || "";
+    let savedCurrency = "USD";
+    let savedCountry = "US";
+    try { savedCurrency = localStorage.getItem("sherlock.currency") || "USD"; } catch (_) { /* private mode */ }
+    try { savedCountry = localStorage.getItem("sherlock.country") || "US"; } catch (_) { /* private mode */ }
+    try {
+      const fx = await get(`/fx-rate?currency=${encodeURIComponent(savedCurrency)}`);
+      S.country = COUNTRIES.some(x => x[0] === savedCountry && x[2] === fx.currency) ? savedCountry : (COUNTRIES.find(x => x[2] === fx.currency)?.[0] || "US");
+      S.currency = fx.currency; S.fxRate = Number(fx.rate) || 1; S.fxDate = fx.date || "";
+    } catch (_) { /* keep USD if the rate service is unavailable */ }
   } catch (e) { document.getElementById("main").innerHTML = note(e.message, "error"); }
   route();
 }

@@ -28,6 +28,7 @@ from threading import Lock
 import searoute
 import json
 import re
+import requests
 import zipfile
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -131,6 +132,11 @@ class WorkspaceIn(BaseModel):
     name: str = Field(min_length=1, max_length=80)
 
 
+class ChatIn(BaseModel):
+    workspace_id: str = Field(min_length=1)
+    question: str = Field(min_length=1, max_length=2000)
+
+
 @app.get("/workspaces")
 def list_workspaces():
     return {"workspaces": _workspaces()}
@@ -150,6 +156,60 @@ def create_workspace(body: WorkspaceIn):
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(workspaces + [created], indent=2) + "\n")
     return created
+
+
+SUPPORTED_CURRENCIES = {"USD", "EUR", "GBP", "CAD", "AUD", "JPY", "CHF", "CNY", "INR", "MXN", "SGD"}
+
+
+@lru_cache(maxsize=32)
+def _fx_rate(currency: str) -> tuple[float, str]:
+    if currency == "USD":
+        return 1.0, ""
+    response = requests.get(f"https://api.frankfurter.dev/v2/rate/USD/{currency}", timeout=5)
+    response.raise_for_status()
+    data = response.json()
+    return float(data["rate"]), str(data.get("date", ""))
+
+
+@app.get("/fx-rate")
+def fx_rate(currency: str = Query("USD", min_length=3, max_length=3)):
+    code = currency.upper()
+    if code not in SUPPORTED_CURRENCIES:
+        raise HTTPException(422, f"unsupported display currency: {code}")
+    try:
+        rate, date = _fx_rate(code)
+        return {"currency": code, "rate": rate, "date": date}
+    except (requests.RequestException, KeyError, TypeError, ValueError) as exc:
+        raise HTTPException(502, "currency conversion is temporarily unavailable") from exc
+
+
+@app.post("/chat")
+def chat(body: ChatIn):
+    """Ask Claude Dr. Watson about only the selected document set."""
+    _workspace(body.workspace_id)
+    if not get_settings().anthropic_api_key:
+        raise HTTPException(503, "Claude Dr. Watson needs ANTHROPIC_API_KEY in .env")
+    uploads = _workspace_uploads(body.workspace_id)
+    context = []
+    for upload in uploads:
+        analysis = upload.get("analysis") or {}
+        context.append({
+            "file": upload.get("filename", "uploaded PDF"),
+            "summary": analysis.get("summary", ""),
+            "records": analysis.get("records", []),
+            "missing_links": analysis.get("missing_links", []),
+        })
+    system = ("You are Claude Dr. Watson, Sherlock's careful finance and shipment assistant. "
+              "Answer only from the uploaded document set context. Do not invent facts. "
+              "If the documents do not establish an answer, say what is unknown and what evidence is needed. "
+              "Use plain language. When answering, cite the relevant filename and page through the sources list. "
+              "Amounts are printed values unless the context explicitly includes a conversion.")
+    user = f"Question:\n{body.question.strip()}\n\nUploaded document set context:\n{json.dumps(context, ensure_ascii=False, default=str)[:60000]}"
+    try:
+        result = get_llm().complete_json("chat", "chat-v1", system, user, stub_input=body.question)
+    except Exception as exc:
+        raise HTTPException(502, f"Claude Dr. Watson could not answer: {exc}") from exc
+    return {"answer": result.output["answer"], "sources": result.output.get("sources", []), "model": result.model, "source": result.source}
 
 
 def _workspace_uploads(workspace_id: str) -> list[dict]:
